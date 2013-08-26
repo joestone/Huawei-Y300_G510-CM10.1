@@ -1,0 +1,117 @@
+#
+# system.prop for u8951
+#
+
+# Bluetooth
+ro.bluetooth.remote.autoconnect=true
+ro.bluetooth.request.master=true
+ro.qualcomm.bluetooth.dun=true
+ro.qualcomm.bluetooth.ftp=true
+
+# Camcorder
+debug.camcorder.disablemeta=1
+
+# CWM
+ro.cwm.enable_key_repeat=true
+
+# Dalvik
+dalvik.vm.dexopt-data-only=1
+dalvik.vm.heapstartsize=5m
+dalvik.vm.heapsize=128m
+dalvik.vm.heapgrowthlimit=36m
+
+# Display
+ro.sf.lcd_density=240
+debug.hwc.dynThreshold=1.91
+debug.sf.hw=1
+debug.composition.type=mdp
+debug.sf.swaprect=1
+dev.pm.dyn_samplingrate=1
+video.accelerate.hw=1
+debug.performance.tuning=1
+windowsmgr.max_events_per_sec=150
+debug.enabletr=true
+persist.sys.use_dithering=0
+ro.max.fling_velocity=4000
+
+#pie-control
+qemu.hw.mainkeys=0
+
+# Huawei
+ro.confg.hw_appfsversion=u8951VCM10_1_SYSIMG
+ro.confg.hw_appsbootversion=u8951VCM10_1_APPSBOOT
+ro.confg.hw_appversion=u8951VCM10_1_KERNEL
+
+# Media
+media.stagefright.enable-player=true
+media.stagefright.enable-meta=true
+media.stagefright.enable-scan=true
+media.stagefright.enable-http=true
+media.stagefright.enable-fma2dp=true
+media.stagefright.enable-aac=true
+media.stagefright.enable-qcp=true
+media.stagefright.enable-record=false
+
+##############################       DUALMIC
+ro.config.dualmic=true
+
+
+# Memory
+ro.zram.default=0
+persist.sys.purgeable_assets=1
+#sys.mem.max_hidden_apps=10
+
+# Qualcomm
+com.qc.hardware=true
+dev.pm.dyn_samplingrate=1
+dev.pm.dyn_sample_period=700000
+ro.vendor.extension_library=/system/lib/libqc-opt.so
+
+########################################        Telephony
+rild.libpath=/system/lib/libril-qc-1.so
+rild.libargs=-d /dev/smd0
+persist.rild.nitz_plmn=
+persist.rild.nitz_long_ons_0=
+persist.rild.nitz_long_ons_1=
+persist.rild.nitz_long_ons_2=
+persist.rild.nitz_long_ons_3=
+persist.rild.nitz_short_ons_0=
+persist.rild.nitz_short_ons_1=
+persist.rild.nitz_short_ons_2=
+persist.rild.nitz_short_ons_3=
+ro.config.ehrpd=true
+ril.subscription.types=NV,RUIM
+ro.telephony.ril_class=HuaweiRIL2
+ro.telephony.ril.v3=qcomdsds
+ro.use_data_netmgrd=true
+# system prop for multi rild (DSDS case)
+#
+ro.multi.rild=false
+keyguard.no_require_sim=true
+ro.com.android.dataroaming=false
+ro.ril.disable.power.collapse=0 
+# Signal Tweaks
+ro.ril.enable.amr.wideband=1
+persist.cust.tel.eons=1
+
+# USB
+persist.sys.usb.config=mass_storage,adb
+persist.service.adb.enable=1
+
+#########################################   Storage
+#
+# system props for SD card emulation of emmc partition
+#
+ro.emmc.sdcard.partition=19
+#
+# Simulate sdcard on /data/media
+#
+persist.fuse_sdcard=false
+ro.emmc=1
+ro.vold.umsdirtyratio=50
+##### set vold.externalsd.isprimary=true to use external SD as primary storage
+#vold.externalsd.isprimary=true
+
+# Wi-Fi
+wifi.interface=eth0
+#wifi.supplicant_scan_interval=60
