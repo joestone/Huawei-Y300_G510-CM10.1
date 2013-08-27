@@ -24,6 +24,6 @@ PRODUCT_COPY_FILES := \
     packages/wallpapers/LivePicker/android.software.live_wallpaper.xml:/system/etc/permissions/android.software.live_wallpaper.xml
 
 # Pick up overlay for features that depend on non-open-source files
-DEVICE_PACKAGE_OVERLAYS := vendor/huawei/u8833/overlay
+DEVICE_PACKAGE_OVERLAYS := vendor/huawei/daytona-common/overlay
 
-$(call inherit-product, vendor/huawei/u8833/u8833-vendor-blobs.mk)
+$(call inherit-product, vendor/huawei/daytona-common/daytona-vendor-blobs.mk)

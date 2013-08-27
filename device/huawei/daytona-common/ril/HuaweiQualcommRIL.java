@@ -35,6 +35,9 @@ import com.android.internal.telephony.RILConstants;
 import com.android.internal.telephony.gsm.SmsBroadcastConfigInfo;
 import com.android.internal.telephony.cdma.CdmaInformationRecords;
 
+import com.android.internal.telephony.IccCardApplicationStatus;
+import com.android.internal.telephony.IccCardStatus;
+
 import java.util.ArrayList;
 
 /**
@@ -42,12 +45,12 @@ import java.util.ArrayList;
  *
  * {@hide}
  */
-public class HuaweiRIL2 extends RIL implements CommandsInterface {
+public class HuaweiQualcommRIL extends RIL implements CommandsInterface {
     protected HandlerThread mIccThread;
     protected IccHandler mIccHandler;
     protected String mAid;
-   protected boolean mUSIM = false;
-	//private String mLastDataIface;
+    protected boolean mUSIM = false;
+	
     protected String[] mLastDataIface = new String[20];
     boolean RILJ_LOGV = true;
     boolean RILJ_LOGD = true;
@@ -57,17 +60,6 @@ public class HuaweiRIL2 extends RIL implements CommandsInterface {
     private final int RIL_INT_RADIO_ON = 2;
     private final int RIL_INT_RADIO_ON_NG = 10;
     private final int RIL_INT_RADIO_ON_HTC = 13;
-/*private final int RIL_INT_RADIO_OFF = 0;
-private final int RIL_INT_RADIO_UNAVAILABLE = 1;
-private final int RIL_INT_RADIO_SIM_NOT_READY = 2;
-private final int RIL_INT_RADIO_SIM_LOCKED_OR_ABSENT = 3;
-private final int RIL_INT_RADIO_SIM_READY = 4;
-private final int RIL_INT_RADIO_RUIM_NOT_READY = 5;
-private final int RIL_INT_RADIO_RUIM_READY = 6;
-private final int RIL_INT_RADIO_RUIM_LOCKED_OR_ABSENT = 7;
-private final int RIL_INT_RADIO_NV_NOT_READY = 8;
-private final int RIL_INT_RADIO_NV_READY = 9;
-private final int RIL_INT_RADIO_ON = 10;*/
 
 	static final int RIL_REQUEST_SIM_TRANSMIT_BASIC = 10026;
 	static final int RIL_REQUEST_SIM_OPEN_CHANNEL = 10027;
@@ -75,7 +67,7 @@ private final int RIL_INT_RADIO_ON = 10;*/
     static final int RIL_REQUEST_SIM_TRANSMIT_CHANNEL = 10029;
 
 
-    public HuaweiRIL2(Context context, int networkMode, int cdmaSubscription) {
+    public HuaweiQualcommRIL(Context context, int networkMode, int cdmaSubscription) {
         super(context, networkMode, cdmaSubscription);
         mSetPreferredNetworkType = -1;
         mQANElements = 4;
@@ -131,8 +123,8 @@ private final int RIL_INT_RADIO_ON = 10;*/
 
         send(rr);
     }
-	
-	   @Override
+
+    @Override
     public void
     iccIO (int command, int fileid, String path, int p1, int p2, int p3,
             String data, String pin2, Message result) {
@@ -140,10 +132,7 @@ private final int RIL_INT_RADIO_ON = 10;*/
         //       but this request is also valid for SIM and RUIM
         RILRequest rr
                 = RILRequest.obtain(RIL_REQUEST_SIM_IO, result);
-
-        if (mUSIM)
-            path = path.replaceAll("7F20$","7FFF");
-
+   
         rr.mp.writeInt(command);
         rr.mp.writeInt(fileid);
         rr.mp.writeString(path);
@@ -165,61 +154,164 @@ private final int RIL_INT_RADIO_ON = 10;*/
         send(rr);
     }
 
-	
     @Override
-    protected Object
+	protected Object
     responseIccCardStatus(Parcel p) {
-        IccCardApplicationStatus ca;
+          IccCardApplicationStatus appStatus;
 
-        IccCardStatus status = new IccCardStatus();
-        status.setCardState(p.readInt());
-        status.setUniversalPinState(p.readInt());
-        status.mGsmUmtsSubscriptionAppIndex = p.readInt();
-        status.mCdmaSubscriptionAppIndex = p.readInt();
-        status.mImsSubscriptionAppIndex = p.readInt();
-
+        IccCardStatus cardStatus = new IccCardStatus();
+        cardStatus.setCardState(p.readInt());
+        cardStatus.setUniversalPinState(p.readInt());
+ 
+        cardStatus.mGsmUmtsSubscriptionAppIndex = p.readInt();
+        cardStatus.mCdmaSubscriptionAppIndex = p.readInt();
+        cardStatus.mImsSubscriptionAppIndex = p.readInt();
+   
         int numApplications = p.readInt();
-
-        // limit to maximum allowed applications
+		if (RILJ_LOGD) riljLog( "numApplications " + numApplications);
+        // Limit to maximum allowed applications
         if (numApplications > IccCardStatus.CARD_MAX_APPS) {
             numApplications = IccCardStatus.CARD_MAX_APPS;
         }
-        status.mApplications = new IccCardApplicationStatus[numApplications];
-
+        cardStatus.mApplications = new IccCardApplicationStatus[numApplications];
+	  
         for (int i = 0; i < numApplications; i++) {
-            ca = new IccCardApplicationStatus();
-            ca.app_type = ca.AppTypeFromRILInt(p.readInt());
-            ca.app_state = ca.AppStateFromRILInt(p.readInt());
-            ca.perso_substate = ca.PersoSubstateFromRILInt(p.readInt());
-            ca.aid = p.readString();
-            ca.app_label = p.readString();
-            ca.pin1_replaced = p.readInt();
-            ca.pin1 = ca.PinStateFromRILInt(p.readInt());
-            ca.pin2 = ca.PinStateFromRILInt(p.readInt());
-            status.mApplications[i] = ca;
+            appStatus = new IccCardApplicationStatus();
+            appStatus.app_type = appStatus.AppTypeFromRILInt(p.readInt());
+            appStatus.app_state = appStatus.AppStateFromRILInt(p.readInt());
+            appStatus.perso_substate = appStatus.PersoSubstateFromRILInt(p.readInt());
+            appStatus.aid = p.readString();
+            appStatus.app_label = p.readString();
+            appStatus.pin1_replaced = p.readInt();
+            appStatus.pin1 = appStatus.PinStateFromRILInt(p.readInt());
+            appStatus.pin2 = appStatus.PinStateFromRILInt(p.readInt());
+            cardStatus.mApplications[i] = appStatus;
         }
         int appIndex = -1;
         if (mPhoneType == RILConstants.CDMA_PHONE) {
-            appIndex = status.mCdmaSubscriptionAppIndex;
+            appIndex = cardStatus.mCdmaSubscriptionAppIndex;
             Log.d(LOG_TAG, "This is a CDMA PHONE " + appIndex);
         } else {
-            appIndex = status.mGsmUmtsSubscriptionAppIndex;
+            appIndex = cardStatus.mGsmUmtsSubscriptionAppIndex;
             Log.d(LOG_TAG, "This is a GSM PHONE " + appIndex);
         }
 
         if (numApplications > 0) {
-            IccCardApplicationStatus application = status.mApplications[appIndex];
+            IccCardApplicationStatus application = cardStatus.mApplications[appIndex];
             mAid = application.aid;
             mUSIM = application.app_type
                       == IccCardApplicationStatus.AppType.APPTYPE_USIM;
-            mSetPreferredNetworkType = mPreferredNetworkType;
+		  mSetPreferredNetworkType = mPreferredNetworkType;
 
             if (TextUtils.isEmpty(mAid))
                mAid = "";
             Log.d(LOG_TAG, "mAid " + mAid);
         }
 
-        return status;
+        return cardStatus;
+    }
+
+    @Override
+    protected DataCallState getDataCallState(Parcel p, int version) {
+        DataCallState dataCall = new DataCallState();
+
+        boolean oldRil = needsOldRilFeature("datacall");
+
+        if (!oldRil && version < 5) {
+            return super.getDataCallState(p, version);
+        } else if (!oldRil) {
+            dataCall.version = version;
+            dataCall.status = p.readInt();
+            dataCall.suggestedRetryTime = p.readInt();
+            dataCall.cid = p.readInt();
+            dataCall.active = p.readInt();
+            dataCall.type = p.readString();
+            dataCall.ifname = p.readString();
+            if ((dataCall.status == DataConnection.FailCause.NONE.getErrorCode()) &&
+                    TextUtils.isEmpty(dataCall.ifname) && dataCall.active != 0) {
+              throw new RuntimeException("getDataCallState, no ifname");
+            }
+            String addresses = p.readString();
+            if (!TextUtils.isEmpty(addresses)) {
+                dataCall.addresses = addresses.split(" ");
+            }
+            String dnses = p.readString();
+            if (!TextUtils.isEmpty(dnses)) {
+                dataCall.dnses = dnses.split(" ");
+            }
+            String gateways = p.readString();
+            if (!TextUtils.isEmpty(gateways)) {
+                dataCall.gateways = gateways.split(" ");
+            }
+        } else {
+            dataCall.version = 4;
+            dataCall.cid = p.readInt();
+            dataCall.active = p.readInt();
+            dataCall.type = p.readString();
+            dataCall.ifname = mLastDataIface[dataCall.cid];
+            p.readString(); // skip APN
+
+            if (TextUtils.isEmpty(dataCall.ifname)) {
+                dataCall.ifname = mLastDataIface[0];
+            }
+
+            String addresses = p.readString();
+            if (!TextUtils.isEmpty(addresses)) {
+                dataCall.addresses = addresses.split(" ");
+            }
+            p.readInt(); // RadioTechnology
+            p.readInt(); // inactiveReason
+
+            dataCall.dnses = new String[2];
+            dataCall.dnses[0] = SystemProperties.get("net."+dataCall.ifname+".dns1");
+            dataCall.dnses[1] = SystemProperties.get("net."+dataCall.ifname+".dns2");
+        }
+
+        return dataCall;
+    }
+
+    @Override
+    protected Object
+    responseSetupDataCall(Parcel p) {
+        DataCallState dataCall;
+
+        boolean oldRil = needsOldRilFeature("datacall");
+
+        if (!oldRil)
+           return super.responseSetupDataCall(p);
+
+        dataCall = new DataCallState();
+        dataCall.version = 4;
+
+        dataCall.cid = 0;
+        p.readString();
+        dataCall.ifname = p.readString();
+        if ((dataCall.status == DataConnection.FailCause.NONE.getErrorCode()) &&
+             TextUtils.isEmpty(dataCall.ifname) && dataCall.active != 0) {
+            throw new RuntimeException(
+                    "RIL_REQUEST_SETUP_DATA_CALL response, no ifname");
+        }
+        /* Use the last digit of the interface id as the cid */
+        if (!needsOldRilFeature("singlepdp")) {
+            dataCall.cid =
+                Integer.parseInt(dataCall.ifname.substring(dataCall.ifname.length() - 1));
+        }
+
+        mLastDataIface[dataCall.cid] = dataCall.ifname;
+
+
+        String addresses = p.readString();
+        if (!TextUtils.isEmpty(addresses)) {
+          dataCall.addresses = addresses.split(" ");
+        }
+
+        dataCall.dnses = new String[2];
+        dataCall.dnses[0] = SystemProperties.get("net."+dataCall.ifname+".dns1");
+        dataCall.dnses[1] = SystemProperties.get("net."+dataCall.ifname+".dns2");
+        dataCall.active = 1;
+        dataCall.status = 0;
+
+        return dataCall;
     }
 
     @Override
@@ -231,7 +323,7 @@ private final int RIL_INT_RADIO_ON = 10;*/
                 RILConstants.RIL_REQUEST_GET_NEIGHBORING_CELL_IDS, response);
 
         if (RILJ_LOGD) riljLog(rr.serialString() + "> " + requestToString(rr.mRequest));
-		if (RILJ_LOGD) riljLog("response " + response);
+
         send(rr);
     }
 
@@ -303,14 +395,16 @@ private final int RIL_INT_RADIO_ON = 10;*/
         Object ret = null;
 
         if (error == 0 || p.dataAvail() > 0) {
+		
+		    /* Convert RIL_REQUEST_GET_MODEM_VERSION back */
+            if (SystemProperties.get("ro.cm.device").indexOf("e73") == 0 &&
+                  rr.mRequest == 220) {
+                rr.mRequest = RIL_REQUEST_BASEBAND_VERSION;
+            }
 
-            // either command succeeds or command fails but with data payload
+            // Either command succeeds or command fails but with data payload
             try {switch (rr.mRequest) {
-            /*
- cat libs/telephony/ril_commands.h \
- | egrep "^ *{RIL_" \
- | sed -re 's/\{([^,]+),[^,]+,([^}]+).+/case \1: ret = \2(p); break;/'
-             */
+			
             case RIL_REQUEST_GET_SIM_STATUS: ret =  responseIccCardStatus(p); break;
             case RIL_REQUEST_ENTER_SIM_PIN: ret =  responseInts(p); break;
             case RIL_REQUEST_ENTER_SIM_PUK: ret =  responseInts(p); break;
@@ -430,7 +524,7 @@ private final int RIL_INT_RADIO_ON = 10;*/
             case RIL_REQUEST_VOICE_RADIO_TECH: ret = responseInts(p); break;
             default:
                 throw new RuntimeException("Unrecognized solicited response: " + rr.mRequest);
-            //break;
+				
             }} catch (Throwable tr) {
                 // Exceptions here usually mean invalid RIL responses
 
@@ -446,7 +540,8 @@ private final int RIL_INT_RADIO_ON = 10;*/
                 return;
             }
         }
-		if (error != 0) {
+
+        if (error != 0) {
             rr.onError(error, ret);
             rr.release();
             return;
@@ -471,7 +566,7 @@ private final int RIL_INT_RADIO_ON = 10;*/
         int response = p.readInt();
 
         switch(response) {
-            //case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: ret =  responseVoid(p); break;
+            case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED: ret =  responseVoid(p); break;
             case RIL_UNSOL_RIL_CONNECTED: ret = responseInts(p); break;
             case 1035: ret = responseVoid(p); break; // RIL_UNSOL_VOICE_RADIO_TECH_CHANGED
             case 1036: ret = responseVoid(p); break; // RIL_UNSOL_RESPONSE_IMS_NETWORK_STATE_CHANGED
@@ -488,10 +583,10 @@ private final int RIL_INT_RADIO_ON = 10;*/
         }
 
         switch(response) {
-            /*case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
+            case RIL_UNSOL_RESPONSE_RADIO_STATE_CHANGED:
                 int state = p.readInt();
                 setRadioStateFromRILInt(state);
-                break;*/
+                break;
 			case RIL_UNSOL_RIL_CONNECTED:
                 if (RILJ_LOGD) unsljLogRet(response, ret);
 				// Initial conditions
@@ -644,7 +739,7 @@ private final int RIL_INT_RADIO_ON = 10;*/
                     break;
                 case EVENT_RADIO_OFF_OR_UNAVAILABLE:
                     mRadioOn = false;
-                    // disposeCards(); // to be verified;
+					
                 default:
                     Log.e(LOG_TAG, " Unknown Event " + paramMessage.what);
                     break;
@@ -684,6 +779,7 @@ private final int RIL_INT_RADIO_ON = 10;*/
                                 new AsyncResult (null, new Integer(rilVer), null));
         }
     }
+
     @Override
     public void
     setNetworkSelectionModeManual(String operatorNumeric, Message response) {

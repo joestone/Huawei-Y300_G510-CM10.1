@@ -14,9 +14,12 @@
 # limitations under the License.
 #
 
--include vendor/huawei/u8833/BoardConfigVendor.mk
+-include vendor/huawei/daytona-common/BoardConfigVendor.mk
 
 TARGET_OTA_ASSERT_DEVICE := G510,U8951,u8951,Y300,U8833,u8833
+
+TARGET_SPECIFIC_HEADER_PATH := device/huawei/daytona-common/include
+TARGET_PROVIDES_INIT_RC := true
 
 # Platform
 TARGET_NO_BOOTLOADER := true
@@ -56,16 +59,16 @@ BOARD_KERNEL_BASE := 0x00200000
 BOARD_PAGE_SIZE := 2048
 TARGET_USERIMAGES_USE_EXT4 := true
 
-TARGET_SPECIFIC_HEADER_PATH := device/huawei/u8951/include
+TARGET_SPECIFIC_HEADER_PATH := device/huawei/daytona-common/include
 
 # Graphics
-BOARD_EGL_CFG := device/huawei/u8951/prebuilt/system/lib/egl/egl.cfg
+BOARD_EGL_CFG := device/huawei/daytona-common/prebuilt/system/lib/egl/egl.cfg
 USE_OPENGL_RENDERER := true
 TARGET_USES_OVERLAY := true
 TARGET_USES_ION := true
 TARGET_QCOM_DISPLAY_VARIANT := legacy
 TARGET_QCOM_MEDIA_VARIANT := caf
-COMMON_GLOBAL_CFLAGS += -DREFRESH_RATE=60
+COMMON_GLOBAL_CFLAGS += -DREFRESH_RATE=65 -DQCOM_LEGACY_OMX -DQCOM_ICS_DECODER -DANCIENT_GL
 BOARD_ADRENO_DECIDE_TEXTURE_TARGET := true
 TARGET_USES_QCOM_BSP := true
 
@@ -101,6 +104,10 @@ TARGET_PROVIDES_LIBAUDIO := true
 # Lights
 TARGET_PROVIDES_LIBLIGHT := true
 
+# RIL
+BOARD_RIL_CLASS := ../../../device/huawei/daytona-common/ril/
+BOARD_PROVIDES_LIBRIL :=true
+
 # Bluetooth
 BOARD_HAVE_BLUETOOTH := true
 BOARD_HAVE_BLUETOOTH_QCOM := true
@@ -127,17 +134,17 @@ BOARD_USE_QCOM_LLVM_CLANG_RS := true
 
 # Recovery
 BOARD_HAS_NO_SELECT_BUTTON := true
-TARGET_RECOVERY_INITRC := device/huawei/u8951/recovery/init.rc
-TARGET_RECOVERY_FSTAB := device/huawei/u8951/recovery/etc/recovery.fstab
+TARGET_RECOVERY_INITRC := device/huawei/daytona-common/recovery/init.rc
+TARGET_RECOVERY_FSTAB := device/huawei/daytona-common/recovery/etc/recovery.fstab
 BOARD_HAS_LARGE_FILESYSTEM := true
 BOARD_HAS_NO_MISC_PARTITION := true
 BOARD_USES_MMCUTILS := true
 TARGET_RECOVERY_PIXEL_FORMAT := RGBX_8888
-BOARD_CUSTOM_RECOVERY_KEYMAPPING := ../../device/huawei/u8951/recovery/recovery-keys.c
+BOARD_CUSTOM_RECOVERY_KEYMAPPING := ../../device/huawei/daytona-common/recovery/recovery-keys.c
 DEVICE_RESOLUTION := 480x800
 TARGET_USE_CUSTOM_LUN_FILE_PATH := /sys/class/android_usb/android0/f_mass_storage/lun%d/file
 BOARD_USE_CUSTOM_RECOVERY_FONT:= \"roboto_10x18.h\"
-BOARD_CUSTOM_GRAPHICS := ../../../device/huawei/u8951/recovery/graphics.c
+BOARD_CUSTOM_GRAPHICS := ../../../device/huawei/daytona-common/recovery/graphics.c
 
 # USB
 BOARD_UMS_LUNFILE := "/sys/class/android_usb/android0/f_mass_storage/lun%d/file"

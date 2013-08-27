@@ -1,0 +1,1275 @@
+#import /init.usb.rc
+import /init.qcom.usb.rc
+import /init.trace.rc
+#import /init.carrier.rc
+on early-init
+    # Set init and its forked children's oom_adj.
+    write /proc/1/oom_adj -16
+
+    # Set the security context for the init process.
+    # This should occur before anything else (e.g. ueventd) is started.
+    setcon u:r:init:s0
+
+    start ueventd
+    
+
+# create mountpoints
+    mkdir /mnt 0775 root system
+    mkdir /storage 0050 root sdcard_r
+    # Create mountpoint so Dalvik can mark as slave in zygotes.
+    mount tmpfs tmpfs /storage mode=0050,uid=0,gid=1028
+
+on init
+    # Set permissions for persist partition
+    mkdir /persist 0771 system system
+
+sysclktz 0
+
+loglevel 3
+# create mountpoints
+    mkdir /mnt 0775 root system
+	mkdir /storage 0775 system sdcard_r
+    mkdir /storage/sdcard0 0000 system system
+    mkdir /storage/sdcard1 0000 system system
+    mkdir /storage/usbdisk0 0000 system system
+
+	# for backwards compatibility
+	symlink /storage/sdcard0 /sdcard
+    symlink /storage/sdcard0 /mnt/sdcard
+    symlink /Storage/sdcard1 /mnt/sdcard2 
+    symlink	/Storage/sdcard1 /sdcard2
+    symlink /storage/usbdisk0 /usbdisk0
+    symlink /storage/usbdisk0 /mnt/usbdisk0
+	
+# setup the global environment
+    export PATH /sbin:/vendor/bin:/system/sbin:/system/bin:/system/xbin
+    export LD_LIBRARY_PATH /vendor/lib:/data/cust/lib:/system/lib:/data/datalib
+    export ANDROID_BOOTLOGO 1
+    export ANDROID_ROOT /system
+    export ANDROID_ASSETS /system/app
+    export ANDROID_DATA /data
+    export ANDROID_STORAGE /storage
+    export ASEC_MOUNTPOINT /mnt/asec
+    export LOOP_MOUNTPOINT /mnt/obb
+    export BOOTCLASSPATH /system/framework/core.jar:/system/framework/core-junit.jar:/system/framework/bouncycastle.jar:/system/framework/ext.jar:/system/framework/framework.jar:/system/framework/telephony-common.jar:/system/framework/mms-common.jar:/system/framework/android.policy.jar:/system/framework/services.jar:/system/framework/apache-xml.jar:/system/framework/org.simalliance.openmobileapi.jar:/system/framework/qcnvitems.jar:/system/framework/qcrilhook.jar
+	#:/system/framework/hwextcamera.jar
+	export EXTERNAL_STORAGE /storage/sdcard0
+	export EXTERNAL_SD_STORAGE /storage/sdcard1
+    export EXTERNAL_USB_STORAGE /mnt/usbdisk0
+
+# Backward compatibility
+    symlink /system/etc /etc
+    symlink /sys/kernel/debug /d
+
+# Right now vendor lives on the same filesystem as system,
+# but someday that may change.
+    symlink /system/vendor /vendor
+
+# Create cgroup mount point for cpu accounting
+    mkdir /acct
+    mount cgroup none /acct cpuacct
+    mkdir /acct/uid
+
+    mkdir /system
+    mkdir /data 0771 system system
+    mkdir /cache 0771 system cache
+    mkdir /config 0500 root root
+#Enable logcat - disabled by default in kernel
+	write /dev/log/switch 1
+    
+	# See storage config details at http://source.android.com/tech/storage/
+    mkdir /mnt/shell 0700 shell shell
+    # Ensure permissions are set appropriately after device early-init.
+    #mkdir /storage 0050 root sdcard_r
+
+    # Directory for putting things only root should see.
+    mkdir /mnt/secure 0700 root root
+    # Create private mountpoint so we can MS_MOVE from staging
+    mount tmpfs tmpfs /mnt/secure mode=0700,uid=0,gid=0
+
+    # Directory for staging bindmounts
+    mkdir /mnt/secure/staging 0700 root root
+
+    # Directory-target for where the secure container
+    # imagefile directory will be bind-mounted
+    mkdir /mnt/secure/asec  0700 root root
+
+    # Secure container public mount points.
+    mkdir /mnt/asec  0700 root system
+    mount tmpfs tmpfs /mnt/asec mode=0755,gid=1000
+
+    # Filesystem image public mount points.
+    mkdir /mnt/obb 0700 root system
+    mount tmpfs tmpfs /mnt/obb mode=0755,gid=1000
+
+    # Fuse public mount points.
+    mkdir /mnt/fuse 0700 root system
+    mount tmpfs tmpfs /mnt/fuse mode=0775,gid=1000
+
+    write /proc/sys/kernel/panic_on_oops 1
+    write /proc/sys/kernel/hung_task_timeout_secs 0
+    write /proc/cpu/alignment 4
+    write /proc/sys/kernel/sched_latency_ns 10000000
+    write /proc/sys/kernel/sched_wakeup_granularity_ns 2000000
+    write /proc/sys/kernel/sched_compat_yield 1
+    write /proc/sys/kernel/sched_child_runs_first 0
+    write /proc/sys/kernel/randomize_va_space 2
+    write /proc/sys/kernel/kptr_restrict 2
+    write /proc/sys/kernel/dmesg_restrict 1
+    write /proc/sys/vm/mmap_min_addr 32768
+    write /proc/sys/kernel/sched_rt_runtime_us 950000
+    write /proc/sys/kernel/sched_rt_period_us 1000000
+
+# Create cgroup mount points for process groups
+    mkdir /dev/cpuctl
+    mount cgroup none /dev/cpuctl cpu
+    chown system system /dev/cpuctl
+    chown system system /dev/cpuctl/tasks
+    chmod 0660 /dev/cpuctl/tasks
+    write /dev/cpuctl/cpu.shares 1024
+    write /dev/cpuctl/cpu.rt_runtime_us 950000
+    write /dev/cpuctl/cpu.rt_period_us 1000000
+
+    mkdir /dev/cpuctl/fg_boost
+    chown system system /dev/cpuctl/fg_boost/tasks
+    chmod 0777 /dev/cpuctl/fg_boost/tasks
+    write /dev/cpuctl/fg_boost/cpu.shares 1024
+
+    mkdir /dev/cpuctl/bg_non_interactive
+    chown system system /dev/cpuctl/bg_non_interactive/tasks
+    chmod 0777 /dev/cpuctl/bg_non_interactive/tasks
+
+
+
+    mkdir /dev/cpuctl/apps
+    chown system system /dev/cpuctl/apps/tasks
+    chmod 0666 /dev/cpuctl/apps/tasks
+    write /dev/cpuctl/apps/cpu.shares 1024
+    write /dev/cpuctl/apps/cpu.rt_runtime_us 800000
+    write /dev/cpuctl/apps/cpu.rt_period_us 1000000
+
+    mkdir /dev/cpuctl/apps/bg_non_interactive
+    chown system system /dev/cpuctl/apps/bg_non_interactive/tasks
+    chmod 0666 /dev/cpuctl/apps/bg_non_interactive/tasks
+    # 5.0 %
+    write /dev/cpuctl/apps/bg_non_interactive/cpu.shares 52
+    write /dev/cpuctl/apps/bg_non_interactive/cpu.rt_runtime_us 700000
+    write /dev/cpuctl/apps/bg_non_interactive/cpu.rt_period_us 1000000
+
+# qtaguid will limit access to specific data based on group memberships.
+#   net_bw_acct grants impersonation of socket owners.
+#   net_bw_stats grants access to other apps' detailed tagged-socket stats.
+    chown root net_bw_acct /proc/net/xt_qtaguid/ctrl
+    chown root net_bw_stats /proc/net/xt_qtaguid/stats
+
+# Allow everybody to read the xt_qtaguid resource tracking misc dev.
+# This is needed by any process that uses socket tagging.
+    chmod 0644 /dev/xt_qtaguid
+
+on fs
+# mount mtd partitions
+    # Mount /system rw first to give the filesystem a chance to save a checkpoint
+    mount yaffs2 mtd@system /system
+    mount yaffs2 mtd@system /system ro remount
+    mount yaffs2 mtd@userdata /data nosuid nodev
+    mount yaffs2 mtd@persist /persist nosuid nodev
+    mount yaffs2 mtd@cache /cache nosuid nodev
+    mount yaffs2 mtd@persist /persist nosuid nodev
+
+on emmc-fs
+# mount mmc partitions
+    wait /dev/block/mmcblk0p17
+    #/*< DTS2012021003176 yanzhijun 20120210 begin */
+    # merge DTS2011110902259 yanzhijun 
+    mount ext4 /dev/block/mmcblk0p17 /system ro barrier=1,nodelalloc
+    wait /dev/block/mmcblk0p18
+    #del DTS2011100400385 for -fy will make large logs to use the ext4 volume
+    exec /system/bin/e2fsck -p /dev/block/mmcblk0p18
+    mount ext4 /dev/block/mmcblk0p18 /data nosuid nodev barrier=1 noauto_da_alloc,nodelalloc
+    mount ext4 /dev/block/mmcblk0p15 /cache nosuid nodev barrier=1,nodelalloc
+	#write /sys/module/block2mtd/parameters/block2mtd /dev/block/mmcblk0p17 
+    write /sys/module/block2mtd/parameters/block2mtd /dev/block/mmcblk0p14
+    
+    exec /system/bin/iqcopy /system/etc/iq.img.vfat /data/iq.img.vfat
+    chown system system /data/iq.img.vfat
+    mkdir /data/app_iq_archive
+    chown system system /data/app_iq_archive
+    chmod 0640 /data/app_iq_archive
+    mount vfat loop@/data/iq.img.vfat /data/app_iq_archive rw nosuid nodev
+
+
+	on property:sys.radio.shutdown=true
+    #write  /sys/devices/platform/rs300000a7.65536/force_sync 1
+	on property:sys.radio.shutdown=true
+   exec /system/bin/sh /system/etc/init.qcom.efs.sync.sh
+
+on post-fs
+    # once everything is setup, no need to modify /
+    mount rootfs rootfs / ro remount
+    # mount shared so changes propagate into child namespaces
+    mount rootfs rootfs / shared rec
+    mount tmpfs tmpfs /mnt/secure private rec
+
+    export_rc /persist/init.cne.rc
+
+    exec /system/bin/sh /system/etc/init.qcom.thermald_conf.sh
+
+
+service ril-qmi /system/bin/sh /init.qcom.ril.path.sh
+    class main
+    user root
+    oneshot
+
+    # We chown/chmod /cache again so because mount is run as root + defaults
+#/*<DTS2010111703624 renjun 20101117 begin*/
+    copy /proc/modem_panic /data/dontpanic/modem_panic
+    chown root log /data/dontpanic/modem_panic
+    chmod 0640 /data/dontpanic/modem_panic
+#/*DTS2010111703624 renjun 20101117 end>*/	    
+#/*< DTS2012020804291 weizhonghui 20120208 begin */
+    mkdir /cache/huawei_ota 0775 system system
+    mkdir /cache/huawei_ota/tmp 0775 system system
+#/* DTS2012020804291 weizhonghui 20120208 end >*/
+#/* < DTS2012011902218 zhuwenying 20120119 begin */
+#delete sdcc chmod
+#/* DTS2012011902218 zhuwenying 20120119 end > */
+    chown system cache /cache
+    chmod 0771 /cache
+    # We restorecon /cache in case the cache partition has been reset.
+    restorecon /cache
+
+    # This may have been created by the recovery system with odd permissions
+    chown system cache /cache/recovery
+    chmod 0770 /cache/recovery
+    # This may have been created by the recovery system with the wrong context.
+    restorecon /cache/recovery
+
+    #change permissions on vmallocinfo so we can grab it from bugreports
+    chown root log /proc/vmallocinfo
+    chmod 0440 /proc/vmallocinfo
+
+    chown root log /proc/slabinfo
+    chmod 0440 /proc/slabinfo
+
+    #change permissions on kmsg & sysrq-trigger so bugreports can grab kthread stacks
+    chown root system /proc/kmsg
+    chmod 0440 /proc/kmsg
+    chown root system /proc/sysrq-trigger
+    chmod 0220 /proc/sysrq-trigger
+    chown system log /proc/last_kmsg
+    chmod 0440 /proc/last_kmsg
+
+    # create the lost+found directories, so as to enforce our permissions
+    mkdir /cache/lost+found 0770 root root
+
+on post-fs-data
+    # We chown/chmod /data again so because mount is run as root + defaults
+    chown system system /data
+    chmod 0771 /data
+    # We restorecon /data in case the userdata partition has been reset.
+    restorecon /data
+    #/*< DTS2012022006319 zhangyun 20120220 begin */
+    chmod 0666 /sys/class/rfkill/rfkill0/state
+    mkdir /data/misc/bluetoothd 0776 bluetooth system 
+    mkdir /data/misc/bluetoothd/bluedroid 0776 bluetooth system 
+
+    rm /data/misc/bluetoothd/bluedroid/bluedroid_ref 
+    write /data/misc/bluetoothd/bluedroid/bluedroid_ref  0
+    chown bluetooth system /data/misc/bluetoothd/bluedroid/bluedroid_ref
+    chmod 0776 /data/misc/bluetoothd/bluedroid/bluedroid_ref
+
+
+    #/* Delete acecss rights */
+    #/*< DTS2012021007082 zhangyun 20120210 begin */
+    #/* DTS2012021007082 zhangyun 20120210 end >*/
+    #/* DTS2012022006319 zhangyun 20120220 end >*/
+    # /*< DTS2012022800763 kangyanjun 20120229 begin */
+    write /data/btaddr 0
+    chown bluetooth system /data/btaddr
+    chmod 0660 /data/btaddr
+    # /* DTS2012022800763 kangyanjun 20120229 end >*/
+
+
+    # Create dump dir and collect dumps.
+    # Do this before we mount cache so eventually we can use cache for
+    # storing dumps on platforms which do not have a dedicated dump partition.
+    mkdir /data/dontpanic 0750 root log
+
+    # Collect apanic data, free resources and re-arm trigger
+    copy /proc/apanic_console /data/dontpanic/apanic_console
+    chown root log /data/dontpanic/apanic_console
+    chmod 0640 /data/dontpanic/apanic_console
+
+    copy /proc/apanic_threads /data/dontpanic/apanic_threads
+    chown root log /data/dontpanic/apanic_threads
+    chmod 0640 /data/dontpanic/apanic_threads
+
+    write /proc/apanic_console 1
+
+    # create basic filesystem structure
+    mkdir /data/misc 01771 system misc
+    mkdir /data/misc/adb 02750 system shell
+    mkdir /data/misc/bluedroid 0770 bluetooth net_bt_stack
+    mkdir /data/misc/bluetooth 0770 system system
+    mkdir /data/misc/keystore 0700 keystore keystore
+    mkdir /data/misc/keychain 0771 system system
+    mkdir /data/misc/sms 0770 system radio
+    mkdir /data/misc/vpn 0770 system vpn
+    mkdir /data/misc/systemkeys 0700 system system
+
+	# Create the directories used by the Wireless subsystem
+    mkdir /data/misc/wifi
+    chmod 0770 /data/misc/wifi
+    chown wifi wifi /data/misc/wifi/ 
+	mkdir /data/misc/wifi/hostapd 0770 wifi wifi
+	mkdir /data/misc/wifi/sockets 0770 wifi wifi
+    mkdir /data/misc/wpa_supplicant 0770 wifi wifi
+#    mkdir /data/misc/wifi/load
+#    chmod 0775 /data/misc/wifi/load
+#    chown system system /data/misc/wifi/load/
+ #   mkdir /data/misc/wifi/bin 0775 system system 
+	
+	
+    chmod 0660 /data/misc/wifi/wpa_supplicant.conf
+	mkdir /data/misc/dhcp 0775 dhcp dhcp
+	chown dhcp dhcp /data/misc/dhcp
+	
+    mkdir /data/local 0751 root root
+    chown system sdcard_rw /sys/touch_screen/update_firmware
+    # For security reasons, /data/local/tmp should always be empty.
+    # Do not place files or directories in /data/local/tmp
+    mkdir /data/local/tmp 0771 shell shell
+    mkdir /data/data 0771 system system
+    mkdir /data/app-private 0771 system system
+    mkdir /data/app-asec 0700 root root
+    mkdir /data/app-lib 0771 system system
+    mkdir /data/app 0771 system system
+    mkdir /data/property 0700 root root
+    mkdir /data/ssh 0750 root shell
+    mkdir /data/ssh/empty 0700 root root
+    mkdir /data/radio 0770 radio radio
+
+    # create dalvik-cache, so as to enforce our permissions
+    mkdir /data/dalvik-cache 0771 system system
+    chown system system /data/dalvik-cache
+    chmod 0771 /data/dalvik-cache
+
+    # create resource-cache and double-check the perms
+    mkdir /data/resource-cache 0771 system system
+    chown system system /data/resource-cache
+    chmod 0771 /data/resource-cache
+
+    # create the lost+found directories, so as to enforce our permissions
+    mkdir /data/lost+found 0770 root root
+
+    # create directory for DRM plug-ins - give drm the read/write access to
+    # the following directory.
+    mkdir /data/drm 0770 drm drm
+
+#From Huawei.rc
+
+    chown system system /persist
+    chmod 0771 /persist
+    chmod 0664 /sys/devices/platform/msm_sdcc.1/polling
+    chmod 0664 /sys/devices/platform/msm_sdcc.2/polling
+    chmod 0664 /sys/devices/platform/msm_sdcc.3/polling
+    chmod 0664 /sys/devices/platform/msm_sdcc.4/polling
+
+    # Chown polling nodes as needed from UI running on system server
+    chown system system /sys/devices/platform/msm_sdcc.1/polling
+    chown system system /sys/devices/platform/msm_sdcc.2/polling
+    chown system system /sys/devices/platform/msm_sdcc.3/polling
+    chown system system /sys/devices/platform/msm_sdcc.4/polling
+
+   #Provide the access to hostapd.conf only to root and group
+    chmod 0660 /data/misc/wifi/hostapd.conf
+	
+#END From Huawei.rc
+
+    # If there is no fs-post-data action in the init.<device>.rc file, you
+    # must uncomment this line, otherwise encrypted filesystems
+    # won't work.
+    # Set indication (checked by vold) that we have finished this action
+    setprop vold.post_fs_data_done 1
+
+	
+	
+# Include extra init file
+    import /init.cm.rc
+
+
+    chown system system /sys/class/android_usb/android0/f_mass_storage/lun/file
+    chmod 0660 /sys/class/android_usb/android0/f_mass_storage/lun/file
+#/* < DTS2012011906031 libeibei 20120116 begin */
+#/* delete "on cust" to refact cust. */
+#/* DTS2012011906031 libeibei 20120116 end > */
+    chown system system /sys/class/android_usb/android0/f_rndis/ethaddr
+    chmod 0660 /sys/class/android_usb/android0/f_rndis/ethaddr
+
+#/* < DTS2011042504555 gaozhibin 20110503 begin */
+    custsymlink delapp /data/cust/delapp
+#/* DTS2011042504555 gaozhibin 20110503 end >*/
+# DTS2012050802343 yanzhennan 20120508 begin
+    chmod 0660 /dev/assd
+    chown smartcard smartcard /dev/assd
+# DTS2012050802343 yanzhennan 20120508 end
+#/*< DTS2012070901677 fanran 20120709 for dingzhu C+W begin */
+    insmod /system/lib/modules/pppoe.ko
+#/* DTS2012070901677 fanran 20120709 for dingzhu C+W end >*/
+on boot
+	start gpu_dcvsd
+	start qcamerasvr
+mount debugfs /sys/kernel/debug /sys/kernel/debug
+# basic network init
+    ifup lo
+    hostname localhost
+    domainname localdomain
+#From Huawei.rc
+    chown bluetooth bluetooth /sys/module/bluetooth_power/parameters/power
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/type
+    chown bluetooth bluetooth /sys/class/rfkill/rfkill0/state
+    chown bluetooth bluetooth /proc/bluetooth/sleep/proto
+    chown system system /sys/module/sco/parameters/disable_esco
+    chown bluetooth bluetooth /sys/module/hci_smd/parameters/hcismd_set
+    chmod 0660 /sys/module/bluetooth_power/parameters/power
+    chmod 0660 /sys/module/hci_smd/parameters/hcismd_set
+    chmod 0660 /sys/class/rfkill/rfkill0/state
+    chmod 0660 /proc/bluetooth/sleep/proto
+    chmod 0660 /proc/bluetooth/clock/proto
+    chown bluetooth bluetooth /dev/ttyHS0
+    chmod 0660 /dev/ttyHS0
+    chown bluetooth bluetooth /sys/devices/platform/msm_serial_hs.0/clock
+    chmod 0660 /sys/devices/platform/msm_serial_hs.0/clock
+
+    #Create QMUX deamon socket area
+    mkdir /dev/socket/qmux_radio 0770 radio radio
+    chmod 2770 /dev/socket/qmux_radio
+    mkdir /dev/socket/qmux_audio 0770 media audio
+    chmod 2770 /dev/socket/qmux_audio
+    mkdir /dev/socket/qmux_bluetooth 0770 bluetooth bluetooth
+    chmod 2770 /dev/socket/qmux_bluetooth
+    mkdir /dev/socket/qmux_gps 0770 gps gps
+    chmod 2770 /dev/socket/qmux_gps
+
+    # Allow QMUX daemon to assign port open wait time
+    chown radio radio /sys/devices/virtual/hsicctl/hsicctl0/modem_wait
+
+#/* < DTS2012011902218 zhuwenying 20120119 begin */
+    setprop wifi.interface eth0
+
+    # Enable Bluetooth 802.11 PAL when Bluetooth is turned on
+    setprop ro.config.bt.amp no
+
+
+    #Set SUID bit for usbhub
+    chmod 4755 /system/bin/usbhub
+    chmod 755 /system/bin/usbhub_init
+
+    #Remove SUID bit for iproute2 ip tool
+    chmod 0755 /system/bin/ip
+
+    #port-bridge
+    chmod 0660 /dev/smd0
+    chown system system /dev/smd0
+
+    #BT DUN port-bridge
+    chmod 0660 /dev/smd7
+    chown bluetooth bluetooth /dev/smd7
+
+    chmod 0444 /sys/devices/platform/msm_hsusb/gadget/usb_state
+
+    # create symlink for fb1 as HDMI
+    symlink /dev/graphics/fb1 /dev/graphics/hdmi
+
+    # Remove write permissions to video related nodes
+    chmod 0664 /sys/devices/virtual/graphics/fb1/hpd
+    chmod 0664 /sys/devices/virtual/graphics/fb1/video_mode
+    chmod 0664 /sys/devices/virtual/graphics/fb1/format_3d
+
+    # Change owner and group for media server and surface flinger
+    chown system system /sys/devices/virtual/graphics/fb1/format_3d
+
+    #For bridgemgr daemon to inform the USB driver of the correct transport
+    chown radio radio /sys/class/android_usb/f_rmnet_smd_sdio/transport
+
+    #To allow interfaces to get v6 address when tethering is enabled
+    write /proc/sys/net/ipv6/conf/rmnet0/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet1/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet2/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet3/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet4/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet5/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet6/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet7/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio0/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio1/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio2/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio3/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio4/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio5/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio6/accept_ra 2
+    write /proc/sys/net/ipv6/conf/rmnet_sdio7/accept_ra 2
+
+#END From Huawei.rc
+	
+# Allow writing to the kernel trace log.
+    chmod 0222 /sys/kernel/debug/tracing/trace_marker
+
+# Allow the shell group to enable (some) kernel tracing.
+    chown root shell /sys/kernel/debug/tracing/trace_clock
+    chown root shell /sys/kernel/debug/tracing/buffer_size_kb
+    chown root shell /sys/kernel/debug/tracing/options/overwrite
+    chown root shell /sys/kernel/debug/tracing/events/sched/sched_switch/enable
+    chown root shell /sys/kernel/debug/tracing/events/sched/sched_wakeup/enable
+    chown root shell /sys/kernel/debug/tracing/events/power/cpu_frequency/enable
+    chown root shell /sys/kernel/debug/tracing/events/power/cpu_idle/enable
+    chown root shell /sys/kernel/debug/tracing/events/cpufreq_interactive/enable
+    chown root shell /sys/kernel/debug/tracing/tracing_on
+
+    chmod 0664 /sys/kernel/debug/tracing/trace_clock
+    chmod 0664 /sys/kernel/debug/tracing/buffer_size_kb
+    chmod 0664 /sys/kernel/debug/tracing/options/overwrite
+    chmod 0664 /sys/kernel/debug/tracing/events/sched/sched_switch/enable
+    chmod 0664 /sys/kernel/debug/tracing/events/sched/sched_wakeup/enable
+    chmod 0664 /sys/kernel/debug/tracing/events/power/cpu_frequency/enable
+    chmod 0664 /sys/kernel/debug/tracing/events/power/cpu_idle/enable
+    chmod 0664 /sys/kernel/debug/tracing/events/cpufreq_interactive/enable
+    chmod 0664 /sys/kernel/debug/tracing/tracing_on
+
+
+    # To prevent out of order acknowledgements from making
+    # connection tracking to treat them as not belonging to
+    # the connection they belong to.
+    # Otherwise, a weird issue happens in which some long
+    # connections on high-throughput links get dropped when
+    # an ack packet comes out of order
+    write /proc/sys/net/netfilter/nf_conntrack_tcp_be_liberal 1
+
+
+# Allow only the shell group to read and truncate the kernel trace.
+    chown root shell /sys/kernel/debug/tracing/trace
+    chmod 0660 /sys/kernel/debug/tracing/trace
+
+
+# set RLIMIT_NICE to allow priorities from 19 to -20
+    setrlimit 13 40 40
+#/* < DTS2010092003014 luojianhong 201000920 begin*/
+    setrlimit 7 2048 2048
+#/*  DTS2010092003014 luojianhong 201000920 end > */
+
+
+    # Old values for phones.  Should probably be adjusted up for the next
+    # phone version.
+#    setprop ro.FOREGROUND_APP_MEM 2048
+#    setprop ro.VISIBLE_APP_MEM 3072
+#    setprop ro.PERCEPTIBLE_APP_MEM 4096
+#    setprop ro.HEAVY_WEIGHT_APP_MEM 4096
+#    setprop ro.SECONDARY_SERVER_MEM 6144
+#    setprop ro.BACKUP_APP_MEM 6144
+#    setprop ro.HOME_APP_MEM 6144
+#    setprop ro.HIDDEN_APP_MEM 7168
+#    setprop ro.EMPTY_APP_MEM 8192
+
+# Write value must be consistent with the above properties.
+# Note that the driver only supports 6 slots, so we have combined some of
+# the classes into the same memory level; the associated processes of higher
+# classes will still be killed first.
+#	chmod 0666	/sys/module/lowmemorykiller/parameters/adj
+#    write /sys/module/lowmemorykiller/parameters/adj 0,1,2,4,7,15
+
+#    write /proc/sys/vm/overcommit_memory 1
+#    write /proc/sys/vm/min_free_order_shift 4
+#	chmod 0666 /sys/module/lowmemorykiller/parameters/minfree
+#    write /sys/module/lowmemorykiller/parameters/minfree 2048,3072,4096,6144,7168,8192
+
+    #Create directories for QuIPS
+    mkdir /data/misc/quipc 0770 gps system
+    #Create directories for Location services
+    mkdir /data/misc/location/xtwifi 0770 gps gps
+
+    #Create directory from IMS services
+    mkdir /data/shared 0755
+    chown system system /data/shared
+
+# Memory management.  Basic kernel parameters, and allow the high
+# level system server to be able to adjust the kernel OOM driver
+# paramters to match how it is managing things.
+    write /proc/sys/vm/overcommit_memory 1
+    write /proc/sys/vm/min_free_order_shift 4
+    chown root system /sys/module/lowmemorykiller/parameters/adj
+    chmod 0664 /sys/module/lowmemorykiller/parameters/adj
+    chown root system /sys/module/lowmemorykiller/parameters/minfree
+    chmod 0664 /sys/module/lowmemorykiller/parameters/minfree
+
+    # Tweak background writeout
+    write /proc/sys/vm/dirty_expire_centisecs 200
+    write /proc/sys/vm/dirty_background_ratio  5
+
+    # Permissions for System Server and daemons.
+    chown radio system /sys/android_power/state
+    chown radio system /sys/android_power/request_state
+    chown radio system /sys/android_power/acquire_full_wake_lock
+    chown radio system /sys/android_power/acquire_partial_wake_lock
+    chown radio system /sys/android_power/release_wake_lock
+    chown system system /sys/power/autosleep
+    chown system system /sys/power/state
+    chown system system /sys/power/wakeup_count
+    chown radio system /sys/power/wake_lock
+    chown radio system /sys/power/wake_unlock
+    chmod 0664 /sys/power/state
+    chmod 0664 /sys/power/wake_lock
+    chmod 0664 /sys/power/wake_unlock
+#/*< DTS2011031804840 genghua 20110318 begin */
+#/* we modify the mode and owner of these items to meet 
+# * a requirement of AT&T test
+# */
+#/* <BU5D07679 zhangtao 20100406 begin */
+    chmod 0664 /dev/light
+    chmod 0664 /dev/proximity
+#/* BU5D07679 zhangtao 20100406 end >*/
+#/* <DTS2010073003167  liujinggang 20100818 begin */
+    chown system system /sys/kernel/logger/log_main/enable
+    chown system system /sys/kernel/logger/log_events/enable
+    chown system system /sys/kernel/logger/log_radio/enable
+    chown system system /sys/kernel/logger/log_main/priority
+    chown system system /sys/kernel/logger/log_events/priority
+    chown system system /sys/kernel/logger/log_radio/priority
+#/* DTS2010073003167 liujinggang 20100818 end > */
+
+    # interactive governor
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/timer_rate
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/timer_rate
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/min_sample_time
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/min_sample_time
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/hispeed_freq
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/go_hispeed_load
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/above_hispeed_delay
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/boost
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/boost
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/boostpulse
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/input_boost
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/input_boost
+    chown system system /sys/devices/system/cpu/cpufreq/interactive/boostpulse_duration
+    chmod 0660 /sys/devices/system/cpu/cpufreq/interactive/boostpulse_duration
+
+    # ondemand governor
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/boostfreq
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/boostfreq
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/boostpulse
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/boostpulse
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/boosttime
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/io_is_busy
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/down_differential
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/down_differential
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/sampling_rate
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/powersave_bias
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/powersave_bias
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/sampling_down_factor
+    chown system system /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
+    chmod 0660 /sys/devices/system/cpu/cpufreq/ondemand/up_threshold
+
+    # Assume SMP uses shared cpufreq policy for all CPUs
+    chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+    chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_governor
+    chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+    chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_max_freq
+    chown system system /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+    chmod 0664 /sys/devices/system/cpu/cpu0/cpufreq/scaling_min_freq
+
+    chmod 0660 /dev/msm_cad
+
+    chown system system /sys/class/timed_output/vibrator/enable
+    chown system system /sys/class/leds/keyboard-backlight/brightness
+    chown system system /sys/class/leds/lcd-backlight/brightness
+    chown system system /sys/class/leds/button-backlight/brightness
+    chown system system /sys/class/leds/jogball-backlight/brightness
+#/*< DTS2011031804840 genghua 20110318 begin */
+#/* we modify the mode and owner of these items to meet 
+# * a requirement of AT&T test
+# */
+#/* < DTS2012101606129 zhangmin 20121016 begin */
+## delete those chmod action and 
+## move it to ueventd.rc,delete DTS2012092001637,and delete 7 chmod lines
+#/* DTS2012101606129 zhangmin 20121016 end > */
+    chown system system /sys/kernel/logger/log_main/enable
+    chown system system /sys/kernel/logger/log_events/enable
+    chown system system /sys/kernel/logger/log_radio/enable
+    chown system system /sys/kernel/logger/log_main/priority
+    chown system system /sys/kernel/logger/log_events/priority
+    chown system system /sys/kernel/logger/log_radio/priority
+    chown radio system /sys/class/leds/ptt_led/brightness
+#/* DTS2010121100315 zhangtao 20101211 end > */
+#/* DTS2010111603970 zhangtao 20101116 end > */
+#/* DTS2011031804840 genghua 20110318 end >*/
+    chown system system /sys/class/leds/red/brightness
+    chown system system /sys/class/leds/green/brightness
+    chown system system /sys/class/leds/blue/brightness
+    chown system system /sys/class/leds/red/device/grpfreq
+    chown system system /sys/class/leds/red/device/grppwm
+    chown system system /sys/class/leds/red/device/blink
+    chown system system /sys/class/leds/red/brightness
+    chown system system /sys/class/leds/green/brightness
+    chown system system /sys/class/leds/blue/brightness
+    chown system system /sys/class/leds/red/device/grpfreq
+    chown system system /sys/class/leds/red/device/grppwm
+    chown system system /sys/class/leds/red/device/blink
+    chown system system /sys/class/timed_output/vibrator/enable
+    chown system system /sys/module/sco/parameters/disable_esco
+    chown system system /sys/kernel/ipv4/tcp_wmem_min
+    chown system system /sys/kernel/ipv4/tcp_wmem_def
+    chown system system /sys/kernel/ipv4/tcp_wmem_max
+    chown system system /sys/kernel/ipv4/tcp_rmem_min
+    chown system system /sys/kernel/ipv4/tcp_rmem_def
+    chown system system /sys/kernel/ipv4/tcp_rmem_max
+    chown root radio /proc/cmdline
+
+#/* < DTS2012062502227 wangquanli 20120625 begin */
+    chmod 0664 /dev/mtk6252_dev
+    chown system system /dev/mtk6252_dev
+    chown system system /sys/devices/platform/mtk6252/download_mode
+    chown system system /sys/devices/platform/mtk6252/usb_sel
+    chown system system /sys/devices/platform/mtk6252/onoff
+    chown system system /sys/devices/platform/mtk6252/softwarestate
+    chown system system /sys/devices/platform/mtk6252/pwrstat
+#/* < DTS2012072302279  guohui 20120723 begin */
+    chown system system /sys/devices/platform/mtk6252/simswap
+#/* DTS2012072302279  guohui 20120723 end > */
+#/* DTS2012062502227 wangquanli 20120625 end > */
+
+#/*< DTS2011031804840 genghua 20110318 begin */
+#/* we modify the mode of these items to meet 
+# * a requirement of AT&T test
+# */
+    chown system system /sys/devices/platform/mmi_key_dev/keytest
+    chmod 664 /dev/input/event1
+    chmod 664 /dev/input/event2
+    chown system system /sys/devices/platform/msm_hsusb/gadget/sdstatus
+    chown system system /sys/devices/platform/msm_hsusb/gadget/switchusb
+    chown system system /sys/devices/platform/msm_hsusb/gadget/fixusb
+#/* DTS2011040900138 genghua 201410409 end >*/
+# Define TCP buffer sizes for various networks
+#   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
+    setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
+    setprop net.tcp.buffersize.wifi    524288,1048576,2097152,262144,524288,1048576
+    setprop net.tcp.buffersize.lte     4094,87380,1220608,4096,16384,1220608
+    setprop net.tcp.buffersize.umts    4094,87380,110208,4096,16384,110208
+    setprop net.tcp.buffersize.hspa    4094,87380,1220608,4096,16384,1220608
+    setprop net.tcp.buffersize.hsupa   4094,87380,1220608,4096,16384,1220608
+    setprop net.tcp.buffersize.hsdpa   4094,87380,1220608,4096,16384,1220608
+    setprop net.tcp.buffersize.edge    4093,26280,35040,4096,16384,35040
+    setprop net.tcp.buffersize.gprs    4092,8760,11680,4096,8760,11680
+    setprop net.tcp.buffersize.evdo_b  4094,87380,262144,4096,16384,262144
+
+# Assign TCP buffer thresholds to be ceiling value of technology maximums
+# Increased technology maximums should be reflected here.
+    write /proc/sys/net/core/rmem_max  2097152
+    write /proc/sys/net/core/wmem_max  1220608
+
+# Set this property so surfaceflinger is not started by system_init
+    setprop system_init.startsurfaceflinger 0
+
+# Run sysinit
+    exec /system/bin/sysinit
+
+    class_start core
+    class_start main
+
+on nonencrypted
+    class_start late_start
+
+on charger
+    class_start charger
+
+on property:vold.decrypt=trigger_reset_main
+    class_reset main
+
+on property:vold.decrypt=trigger_load_persist_props
+    load_persist_props
+
+on property:vold.decrypt=trigger_post_fs_data
+    trigger post-fs-data
+
+on property:vold.decrypt=trigger_restart_min_framework
+    class_start main
+
+on property:vold.decrypt=trigger_restart_framework
+    class_start main
+    class_start late_start
+
+on property:vold.decrypt=trigger_shutdown_framework
+    class_reset late_start
+    class_reset main
+
+#setprop persist.sys.usb.config mtp,adb	
+
+
+	
+ 
+
+ 
+
+chmod 0664 /dev/accel
+chmod 0664 /dev/compass_aot
+chmod 0664 /dev/akm8975_dev
+chmod 0664 /dev/compass_dev
+chmod 0664 /dev/gyro
+
+service ueventd /sbin/ueventd
+    class core
+    critical
+    seclabel u:r:ueventd:s0
+
+on property:selinux.reload_policy=1
+    restart ueventd
+    restart installd
+
+service console /system/bin/sh
+    class core
+    console
+    disabled
+    user shell
+    group log
+
+on property:ro.debuggable=1
+    start console
+
+# adbd is controlled via property triggers in init.<platform>.usb.rc
+service adbd /sbin/adbd
+    class core
+    socket adbd stream 660 system system
+    disabled
+    seclabel u:r:adbd:s0
+
+# adbd on at boot in emulator
+on property:ro.kernel.qemu=1
+    start adbd
+
+
+service servicemanager /system/bin/servicemanager
+    class core
+    user system
+    group system
+    critical
+    onrestart restart zygote
+    onrestart restart media
+    onrestart restart surfaceflinger
+    onrestart restart drm
+
+service vold /system/bin/vold
+    class core
+    socket vold stream 0660 root mount
+    ioprio be 2
+
+service netd /system/bin/netd
+    class main
+    socket netd stream 0660 root system
+    socket dnsproxyd stream 0660 root inet
+    socket mdns stream 0660 root system
+
+service debuggerd /system/bin/debuggerd
+    class main
+
+service ril-daemon /system/bin/rild
+    class main
+    socket rild stream 660 root radio
+    socket rild-debug stream 660 radio system
+    user root
+    group radio cache inet misc audio sdcard_rw qcom_oncrpc diag qcom_diag log
+
+service surfaceflinger /system/bin/surfaceflinger
+    class main
+    user system
+    group graphics drmrpc
+    onrestart restart zygote
+
+# DTS2012050704209 yangqinghua&&zhudengkui 20120507 begin 
+service hwdevctl /system/bin/hwdevctlservice
+    class main
+    user system
+    group graphics
+# DTS2012050704209 yangqinghua&&zhudengkui 20120507 end
+
+service zygote /system/bin/app_process -Xzygote /system/bin --zygote --start-system-server
+    class main
+    socket zygote stream 660 root system
+    onrestart write /sys/android_power/request_state wake
+    onrestart write /sys/power/state on
+    onrestart restart media
+    onrestart restart netd
+	onrestart restart cnd
+
+service drm /system/bin/drmserver
+    class main
+    user drm
+    group drm system inet drmrpc sdcard_rw
+
+service media /system/bin/mediaserver
+    class main
+    user media
+    group audio camera inet net_bt net_bt_admin net_bw_acct drmrpc qcom_diag
+    ioprio rt 4
+
+service bootanim /system/bin/bootanimation
+    class main
+    user graphics
+    group graphics
+    disabled
+    oneshot
+
+service dbus /system/bin/dbus-daemon --system --nofork
+    class main
+    socket dbus stream 660 bluetooth bluetooth
+    user bluetooth
+    group bluetooth net_bt_admin
+
+on property:init.svc.wpa_supplicant=stopped
+    stop dhcpcd
+
+service p2p_supplicant /system/bin/wpa_supplicant \
+    -ieth0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf -N \
+    -ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf -e/data/misc/wifi/entropy.bin 
+	class main
+    socket wpa_eth0 dgram 660 wifi wifi
+    disabled
+    oneshot
+ 	
+
+service wpa_supplicant /system/bin/wpa_supplicant -Dnl80211 -ieth0 -W -e/data/misc/wifi/entropy.bin -c/data/misc/wifi/wpa_supplicant.conf 
+	class main
+	socket wpa_eth0 dgram 0660 wifi wifi
+    disabled
+    oneshot
+
+service dhcpcd_eth0 /system/bin/dhcpcd -ABKL
+     class main
+     disabled
+     oneshot
+
+service iprenew_eth0 /system/bin/dhcpcd -n
+    class main        
+    disabled        
+    oneshot	
+	
+#service p2p_supplicant /system/bin/wpa_supplicant -Dnl80211 -ieth0 -puse_p2p_group_interface=1 -W -c/data/misc/wifi/wpa_supplicant.conf
+#class main
+#socket wpa_eth0 dgram 0660 wifi wifi
+#disabled
+#oneshot
+
+#service dhcpcd_p2p /system/bin/dhcpcd -aABKL
+#     class main
+#     disabled
+#     oneshot
+
+#service iprenew_p2p /system/bin/dhcpcd -n
+#    class main
+#    disabled
+#    oneshot
+
+service hostapd /system/bin/hostapd /data/misc/wifi/hostapd.conf
+    socket hostapd_eth0 dgram 660 wifi wifi
+    group wifi inet
+    oneshot
+    disabled
+
+
+service nfc_check /system/bin/nfc_check
+    class main
+    user root
+    group root
+    oneshot
+
+
+service installd /system/bin/installd
+    class main
+    socket installd stream 600 system system
+
+# /* <DTS2012112105793 sunwenyong 20121121 begin */
+# /*this service has been started in init.huawei.rc ,delete the repeat part */
+# /* DTS2012112105793 sunwenyong 20121121 end> */
+service mpdecision /system/bin/mpdecision --no_sleep --avg_comp
+        class late_start
+	user root
+	disabled
+
+service racoon /system/bin/racoon
+    class main
+    socket racoon stream 600 system system
+    # IKE uses UDP port 500. Racoon will setuid to vpn after binding the port.
+    group vpn net_admin inet
+    disabled
+    oneshot
+
+service mtpd /system/bin/mtpd
+    class main
+    socket mtpd stream 600 system system
+    user vpn
+    group vpn net_admin inet net_raw
+    disabled
+    oneshot
+
+service keystore /system/bin/keystore /data/misc/keystore
+    class main
+    user keystore
+    group keystore drmrpc
+    socket keystore stream 666
+
+service atserver /system/bin/atserver
+    class core
+    oneshot
+
+service oem_rpc_svc /system/bin/oem_rpc_svc
+    class core
+    
+service dumpstate /system/bin/dumpstate -s
+    class main
+    socket dumpstate stream 0660 shell log
+    disabled
+    oneshot
+
+service sshd /system/bin/start-ssh
+    class main
+    disabled
+
+service mdnsd /system/bin/mdnsd
+    class main
+    user mdnsr
+    group inet net_raw
+    socket mdnsd stream 0660 mdnsr inet
+    disabled
+    oneshot
+
+service gps_nmea /system/bin/port-bridge /dev/nmea /dev/ttyGS1
+    disabled
+
+service compassd /system/bin/compassd
+    class main
+    disabled
+    oneshot
+
+service akm8975 /system/bin/akmd8975
+    class main
+    disabled
+    oneshot
+
+service akm8963 /system/bin/akmd8963
+    class main
+    disabled
+    oneshot
+
+service rmt_storage /system/bin/rmt_storage
+    class core
+#    user root
+#    disabled
+
+service rmt_oeminfo /system/bin/rmt_oeminfo
+    class main
+    user root
+    oneshot
+	
+on property:ro.emmc=1
+    start rmt_storage
+	start rmt_oeminfo
+
+on property:crypto.driver.load=1
+     insmod /system/lib/modules/qce.ko
+     insmod /system/lib/modules/qcedev.ko
+
+on property:crypto.driver.load=0
+     exec /system/bin/rmmod qcedev.ko
+     exec /system/bin/rmmod qce.ko
+
+service qcom-post-boot /system/bin/sh /system/etc/init.qcom.post_boot.sh
+    class main
+    user root
+    disabled
+    oneshot
+    
+on property:sys.boot_completed=1
+    start qcom-post-boot
+
+service netmgrd /system/bin/netmgrd
+    class main
+	
+on property:ro.use_data_netmgrd=false
+    # netmgr not supported on specific target
+    stop netmgrd
+	
+#service fm_dl /system/bin/sh /system/etc/init.qcom.fm.sh
+#    class main
+#    user root
+#    group system qcom_oncrpc
+#    disabled
+#    oneshot
+    
+service dhcpcd_brcm-pan /system/bin/dhcpcd -ABKL
+        class main
+        disabled
+        oneshot
+
+service iprenew_brcm-pan /system/bin/dhcpcd -n
+        class main
+        disabled
+        oneshot
+
+#service btld /system/bin/logwrapper /system/bin/btld -lpm 1 -hb 3000000
+#/* < DTS2012021306459 zhangyun 20120213 begin */
+service btld /system/bin/logwrapper /system/bin/btld -lpm 1 -hb 3000000 -hp /dev/ttyHS0
+    user bluetooth system
+    group bluetooth net_bt_admin system
+    disabled
+    oneshot
+#/* DTS2012021306459 zhangyun 20120213 end > */
+
+# start btld if soft_onoff is enabled
+on property:service.brcm.bt.soft_onoff=1
+    start btld
+
+# stop btld if soft_onoff is disabled
+on property:service.brcm.bt.soft_onoff=0
+    stop btld
+
+#STOPSHIP: Remove logwrapper and -d option before production
+service bluetoothd /system/bin/bluetoothd -n
+    class main
+    socket bluetooth stream 660 bluetooth bluetooth
+    socket dbus_bluetooth stream 660 bluetooth bluetooth
+# init.rc does not yet support applying capabilities, so run as root and
+# let bluetoothd drop uid to bluetooth with the right linux capabilities
+    group bluetooth net_bt_admin misc
+    disabled
+#/* DTS2012020604357 zhangyun 20120206 end > */
+    
+service hci_dev_up /system/bin/hci_dev_state --dev_up
+    user root
+    group bluetooth system
+    disabled 
+    oneshot
+    
+service hci_dev_down /system/bin/hci_dev_state --dev_down
+    user root
+    group bluetooth system
+    disabled 
+    oneshot    
+    
+#/* < DTS2012082502545 yuxiangzhi 20120825 begin */
+service BtWiRfServer /system/xbin/RfTest
+    user root
+    group bluetooth net_bt_admin system  
+    disabled
+    oneshot
+
+service bt-sap /system/bin/sapd 15
+    class main
+    disabled
+    oneshot
+
+service sapd /system/bin/sdptool add --channel=15 SAP
+    class main
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service dund /system/bin/sdptool add --channel=1 DUN
+    class main
+    user bluetooth
+    group bluetooth net_bt_admin
+    disabled
+    oneshot    
+
+service bridgemgrd /system/bin/bridgemgrd
+    class main
+    user radio
+    group radio
+    disabled
+
+service port-bridge /system/bin/port-bridge /dev/smd0 /dev/ttyGS0
+    class main
+    user system
+    group system inet
+    disabled
+
+on property:ro.baseband="msm"
+    # Enable BT-DUN only for all msms
+    setprop ro.qualcomm.bluetooth.dun true
+
+service qmiproxy /system/bin/qmiproxy
+    class main
+    user radio
+    group radio
+    disabled
+
+service qmuxd /system/bin/qmuxd
+    class main
+    user radio
+    group radio
+
+	
+# Adjust socket buffer to enlarge TCP receive window for high bandwidth
+# but only if ro.data.large_tcp_window_size property is set.
+on property:ro.data.large_tcp_window_size=true
+    write /proc/sys/net/ipv4/tcp_adv_win_scale  1
+
+service btwlancoex /system/bin/sh /system/etc/init.qcom.coex.sh
+    class main
+    user bluetooth
+    group bluetooth net_bt_admin inet net_admin net_raw
+    disabled
+    oneshot
+
+service amp_init /system/bin/amploader -i
+    class main
+    user root
+    disabled
+    oneshot
+
+service amp_load /system/bin/amploader -l 7000
+    class main
+    user root
+    disabled
+    oneshot
+
+service amp_unload /system/bin/amploader -u
+    class main
+    user root
+    disabled
+    oneshot
+
+#/*< DTS2011063003923 lihongbin 20110630 begin */
+#start the test_diag support automation and diag in arm11
+#redefinition so delete it
+#service test_diag /system/bin/test_diag
+#/* DTS2011063003923 lihongbin 20110630 end >*/ 
+
+service gpu_dcvsd /system/bin/gpu_dcvsd
+    class late_start
+    user root
+    oneshot
+
+service qosmgrd /system/bin/qosmgr /system/etc/qosmgr_rules.xml
+    user system
+    group system
+    disabled
+    
+# Start camera server as daemon
+service qcamerasvr /system/bin/mm-qcamera-daemon
+   class late_start
+   user media
+   group system camera inet audio
+
+service thermald /system/bin/thermald
+    class late_start
+    user root
+    group root
+    disabled
+
+on property:persist.thermal.monitor=true
+    start thermald

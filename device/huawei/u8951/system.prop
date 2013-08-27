@@ -22,6 +22,7 @@ dalvik.vm.heapgrowthlimit=36m
 
 # Display
 ro.sf.lcd_density=240
+ro.lcd.backlight=67
 debug.hwc.dynThreshold=1.91
 debug.sf.hw=1
 debug.composition.type=mdp
@@ -66,6 +67,7 @@ com.qc.hardware=true
 dev.pm.dyn_samplingrate=1
 dev.pm.dyn_sample_period=700000
 ro.vendor.extension_library=/system/lib/libqc-opt.so
+persist.thermal.monitor=true
 
 ########################################        Telephony
 rild.libpath=/system/lib/libril-qc-1.so
@@ -81,6 +83,7 @@ persist.rild.nitz_short_ons_2=
 persist.rild.nitz_short_ons_3=
 ro.config.ehrpd=true
 ril.subscription.types=NV,RUIM
+ro.telephony.call_ring.multiple=false
 ro.telephony.ril_class=HuaweiRIL2
 ro.telephony.ril.v3=qcomdsds
 ro.use_data_netmgrd=true
@@ -93,6 +96,13 @@ ro.ril.disable.power.collapse=0
 # Signal Tweaks
 ro.ril.enable.amr.wideband=1
 persist.cust.tel.eons=1
+ro.telephony.default_network=0
+ro.config.hw_fast_dormancy_ap=true
+ro.config.hw_fast_dormancy=3
+ro.dual.sim.phone=false
+persist.dsds.enabled=false
+ro.config.hw_showSimName=true
+ro.config.hw_pukunlock_cfmpin=true
 
 # USB
 persist.sys.usb.config=mass_storage,adb
@@ -115,3 +125,4 @@ ro.vold.umsdirtyratio=50
 # Wi-Fi
 wifi.interface=eth0
 #wifi.supplicant_scan_interval=60
+wlan.driver.status=ok

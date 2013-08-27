@@ -26,9 +26,9 @@ $(call inherit-product, $(SRC_TARGET_DIR)/product/languages_full.mk)
 # The GPS configuration appropriate for this device.
 $(call inherit-product, device/common/gps/gps_eu_supl.mk)
 
-$(call inherit-product, vendor/huawei/u8833/u8833-vendor.mk)
+$(call inherit-product, vendor/huawei/daytona-common/daytona-vendor.mk)
 
-DEVICE_PACKAGE_OVERLAYS += device/huawei/u8951/overlay
+DEVICE_PACKAGE_OVERLAYS += device/huawei/daytona-common/overlay
 
 PRODUCT_AAPT_CONFIG := normal hdpi
 PRODUCT_AAPT_PREF_CONFIG := hdpi
@@ -89,23 +89,22 @@ PRODUCT_PACKAGES += \
     com.android.future.usb.accessory
 
 PRODUCT_COPY_FILES += \
-    device/huawei/u8951/ramdisk/init.huawei.rc:root/init.huawei.rc \
-    device/huawei/u8951/ramdisk/init.huawei.usb.rc:root/init.huawei.usb.rc \
-    device/huawei/u8951/ramdisk/fstab.huawei:root/fstab.huawei \
-    device/huawei/u8951/ramdisk/ueventd.huawei.rc:root/ueventd.huawei.rc \
-	device/huawei/u8951/ramdisk/init.qcom.ril.path.sh:root/init.qcom.ril.path.sh \
-    device/huawei/u8951/ramdisk/tp/1191601.img:root/tp/1191601.img
+    device/huawei/daytona-common/ramdisk/init.rc:root/init.rc \
+    device/huawei/daytona-common/ramdisk/init.qcom.usb.rc:root/init.qcom.usb.rc \
+    device/huawei/daytona-common/ramdisk/ueventd.rc:root/ueventd.rc \
+	device/huawei/daytona-common/ramdisk/init.qcom.ril.path.sh:root/init.qcom.ril.path.sh \
+    device/huawei/daytona-common/ramdisk/tp/1191601.img:root/tp/1191601.img
 	
 PRODUCT_COPY_FILES += \
-  $(call find-copy-subdir-files,*,device/huawei/u8951/prebuilt/system,system)
+  $(call find-copy-subdir-files,*,device/huawei/daytona-common/prebuilt/system,system)
 
 # Files needed for recovery image
 PRODUCT_COPY_FILES += \
-device/huawei/u8951/recovery/sbin/charge_recovery:/recovery/root/sbin/charge_recovery \
-device/huawei/u8951/recovery/sbin/rmt_storage_recovery:/recovery/root/sbin/rmt_storage_recovery \
-device/huawei/u8951/recovery/sbin/rmt_oeminfo_recovery:/recovery/root/sbin/rmt_oeminfo_recovery \
-device/huawei/u8951/recovery/sbin/linker:/recovery/root/sbin/linker \
-device/huawei/u8951/recovery/sbin/charge.sh:/recovery/root/sbin/charge.sh
+device/huawei/daytona-common/recovery/sbin/charge_recovery:/recovery/root/sbin/charge_recovery \
+device/huawei/daytona-common/recovery/sbin/rmt_storage_recovery:/recovery/root/sbin/rmt_storage_recovery \
+device/huawei/daytona-common/recovery/sbin/rmt_oeminfo_recovery:/recovery/root/sbin/rmt_oeminfo_recovery \
+device/huawei/daytona-common/recovery/sbin/linker:/recovery/root/sbin/linker \
+device/huawei/daytona-common/recovery/sbin/charge.sh:/recovery/root/sbin/charge.sh
 
 # Install the features available on this device.
 PRODUCT_COPY_FILES += \
