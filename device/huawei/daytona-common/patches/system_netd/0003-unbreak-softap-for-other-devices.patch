@@ -1,0 +1,75 @@
+From 6baa13babd6b56670031d268da4796e440164d72 Mon Sep 17 00:00:00 2001
+From: Konsta <konsta09@gmail.com>
+Date: Tue, 5 Feb 2013 13:44:11 +0200
+Subject: [PATCH 3/3] unbreak softap for other devices
+
+Change-Id: I71cfc269b08d0359bd0be8d0b21a5feb839652e5
+---
+ Android.mk          | 1 +
+ CommandListener.cpp | 5 +++++
+ SoftapController.h  | 4 ++++
+ 3 files changed, 10 insertions(+)
+
+diff --git a/Android.mk b/Android.mk
+index 5b4a9c2..bf803c2 100644
+--- a/Android.mk
++++ b/Android.mk
+@@ -48,6 +48,7 @@ else ifeq ($(WIFI_DRIVER_MODULE_NAME),ar6000)
+   LOCAL_C_INCLUDES += external/wpa_supplicant_6/wpa_supplicant/src/common
+   LOCAL_SRC_FILES += SoftapControllerATH.cpp
+   LOCAL_SHARED_LIBRARIES := $(LOCAL_SHARED_LIBRARIES) libwpa_client
++  LOCAL_CFLAGS += -DBLADE_SOFTAP
+ else
+   LOCAL_SRC_FILES += SoftapController.cpp
+ endif
+diff --git a/CommandListener.cpp b/CommandListener.cpp
+index 047a417..5f92adc 100644
+--- a/CommandListener.cpp
++++ b/CommandListener.cpp
+@@ -839,12 +839,17 @@ int CommandListener::SoftapCmd::runCommand(SocketClient *cli,
+         return 0;
+     }
+ 
++#ifdef BLADE_SOFTAP
+     if (!strcmp(argv[1], "start")) {
+         rc = sSoftapCtrl->startDriver(argv[2]);
+     } else if (!strcmp(argv[1], "stop")) {
+         rc = sSoftapCtrl->stopDriver(argv[2]);
+     } else if (!strcmp(argv[1], "startap")) {
+         rc = sSoftapCtrl->startSoftap();
++#else
++    if (!strcmp(argv[1], "startap")) {
++        rc = sSoftapCtrl->startSoftap();
++#endif
+     } else if (!strcmp(argv[1], "stopap")) {
+         rc = sSoftapCtrl->stopSoftap();
+     } else if (!strcmp(argv[1], "fwreload")) {
+diff --git a/SoftapController.h b/SoftapController.h
+index 0d275d2..8871adc 100644
+--- a/SoftapController.h
++++ b/SoftapController.h
+@@ -27,8 +27,10 @@
+ #define AP_DRIVER_START_DELAY	800000
+ 
+ class SoftapController {
++#ifdef BLADE_SOFTAP
+     char mBuf[SOFTAP_MAX_BUFFER_SIZE];
+     char mIface[IFNAMSIZ];
++#endif
+     pid_t mPid;
+     int mSock;
+ 
+@@ -38,8 +40,10 @@ public:
+     SoftapController();
+     virtual ~SoftapController();
+ 
++#ifdef BLADE_SOFTAP
+     int startDriver(char *iface);
+     int stopDriver(char *iface);
++#endif
+     int startSoftap();
+     int stopSoftap();
+     bool isSoftapStarted();
+-- 
+1.8.3.msysgit.0
+

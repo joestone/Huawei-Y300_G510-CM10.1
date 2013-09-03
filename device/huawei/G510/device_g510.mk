@@ -33,21 +33,43 @@ DEVICE_PACKAGE_OVERLAYS += device/huawei/daytona-common/overlay
 PRODUCT_AAPT_CONFIG := normal hdpi
 PRODUCT_AAPT_PREF_CONFIG := hdpi
 
-# Video
-PRODUCT_PACKAGES += \
-    libstagefrighthw \
-    libmm-omxcore \
-    libOmxCore \
-    libOmxVdec \
-    libOmxVenc
+#MM_CORE
+PRODUCT_PACKAGES += libmm-omxcore
+PRODUCT_PACKAGES += libOmxCore
+PRODUCT_PACKAGES += libOmxAacEnc
+PRODUCT_PACKAGES += libOmxAmrEnc
+PRODUCT_PACKAGES += libOmxEvrcEnc
+PRODUCT_PACKAGES += libOmxQcelp13Enc
+
+#MM_VIDEO
+PRODUCT_PACKAGES += ast-mm-vdec-omx-test
+PRODUCT_PACKAGES += libdivxdrmdecrypt
+PRODUCT_PACKAGES += liblasic
+PRODUCT_PACKAGES += libOmxVdec
+PRODUCT_PACKAGES += libOmxVenc
+PRODUCT_PACKAGES += libOpenMAXAL
+PRODUCT_PACKAGES += libOpenSLES
+PRODUCT_PACKAGES += libOmxVidEnc
+PRODUCT_PACKAGES += mm-vdec-omx-property-mgr
+PRODUCT_PACKAGES += mm-vdec-omx-test
+PRODUCT_PACKAGES += mm-venc-omx-test
+PRODUCT_PACKAGES += mm-venc-omx-test720p
+PRODUCT_PACKAGES += mm-video-driver-test
+PRODUCT_PACKAGES += libdashplayer
+PRODUCT_PACKAGES += qcmediaplayer
+
 
 # Graphics
-PRODUCT_PACKAGES += \
-    copybit.msm7x27a \
-    gralloc.msm7x27a \
-    hwcomposer.msm7x27a \
-	libgenlock \
-    libtilerenderer
+PRODUCT_PACKAGES += copybit.msm7x27a
+PRODUCT_PACKAGES += gralloc.msm7x27a
+PRODUCT_PACKAGES += hwcomposer.msm7x27a
+PRODUCT_PACKAGES += libmemalloc
+PRODUCT_PACKAGES += libstagefrighthw
+PRODUCT_PACKAGES += libqdutils
+PRODUCT_PACKAGES += liboverlay
+PRODUCT_PACKAGES += libexternal
+PRODUCT_PACKAGES += libqservice
+PRODUCT_PACKAGES += libgenlock
 
 # Audio
 PRODUCT_PACKAGES += \
@@ -75,9 +97,20 @@ PRODUCT_PACKAGES += \
 	
 # Live Wallpapers
 PRODUCT_PACKAGES += \
-    LiveWallpapersPicker \
-    librs_jni	
-	
+        librs_jni \
+		CMWallpapers \
+        LiveWallpapers \
+        VisualizationWallpapers \
+        LiveWallpapersPicker \
+
+#Theme package
+PRODUCT_PACKAGES += \
+	ThemeManager \
+	ThemeChooser \
+	com.tmobile.themes \
+	Androidian \
+	Cyanbread
+
 # Other Packages
 PRODUCT_PACKAGES += \
     dexpreopt \
@@ -86,7 +119,17 @@ PRODUCT_PACKAGES += \
     Torch \
 	Stk \
 	SpareParts \
+	libnl_2 \
     com.android.future.usb.accessory
+	
+# Bluez
+PRODUCT_PACKAGES += \
+    bluetoothd \
+    libbluetoothd \
+    hcitool \
+    hciconfig \
+    hciattach \
+    javax.btobex
 
 PRODUCT_COPY_FILES += \
     device/huawei/daytona-common/ramdisk/init.rc:root/init.rc \
@@ -132,11 +175,13 @@ PRODUCT_COPY_FILES += \
 	frameworks/native/data/etc/android.hardware.nfc.xml:system/etc/permissions/android.hardware.nfc.xml \
 
 PRODUCT_TAGS += dalvik.gc.type-precise
+PRODUCT_PROPERTY_OVERRIDES+= dalvik.vm.execution-mode=int:jit \
 
 $(call inherit-product, build/target/product/full.mk)
 
-PRODUCT_BUILD_PROP_OVERRIDES += BUILD_UTC_DATE=0
-PRODUCT_NAME := cm_u8951
-PRODUCT_DEVICE := u8951
+PRODUCT_NAME := cm_G510
+PRODUCT_DEVICE := G510
 PRODUCT_MANUFACTURER := HUAWEI
-PRODUCT_MODEL := Ascend G510
+PRODUCT_MODEL := G510
+PRODUCT_BOARD := U8951
+PRODUCT_BRAND := Ascend

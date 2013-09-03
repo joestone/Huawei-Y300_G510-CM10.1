@@ -18,7 +18,7 @@
 #ifndef _BDROID_BUILDCFG_H
 #define _BDROID_BUILDCFG_H
 
-#define BTM_DEF_LOCAL_NAME   "Ascend Y300"
+#define BTM_DEF_LOCAL_NAME   "Huawei Ascend G510"
 #define BTA_DISABLE_DELAY 1000 /* in milliseconds */
 
 #endif

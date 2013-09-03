@@ -1119,23 +1119,6 @@ service iprenew_brcm-pan /system/bin/dhcpcd -n
         disabled
         oneshot
 
-#service btld /system/bin/logwrapper /system/bin/btld -lpm 1 -hb 3000000
-#/* < DTS2012021306459 zhangyun 20120213 begin */
-service btld /system/bin/logwrapper /system/bin/btld -lpm 1 -hb 3000000 -hp /dev/ttyHS0
-    user bluetooth system
-    group bluetooth net_bt_admin system
-    disabled
-    oneshot
-#/* DTS2012021306459 zhangyun 20120213 end > */
-
-# start btld if soft_onoff is enabled
-on property:service.brcm.bt.soft_onoff=1
-    start btld
-
-# stop btld if soft_onoff is disabled
-on property:service.brcm.bt.soft_onoff=0
-    stop btld
-
 #STOPSHIP: Remove logwrapper and -d option before production
 service bluetoothd /system/bin/bluetoothd -n
     class main
@@ -1158,32 +1141,39 @@ service hci_dev_down /system/bin/hci_dev_state --dev_down
     group bluetooth system
     disabled 
     oneshot    
-    
-#/* < DTS2012082502545 yuxiangzhi 20120825 begin */
-service BtWiRfServer /system/xbin/RfTest
-    user root
-    group bluetooth net_bt_admin system  
+
+service hciattach /system/bin/sh /system/etc/init.qcom.bt.sh
+    class late_start
+    user bluetooth
+    group qcom_oncrpc bluetooth net_bt_admin
+    disabled
+    oneshot
+
+service bt-dun /system/bin/dun-server /dev/smd7 /dev/rfcomm0
+    class late_start
+    user bluetooth
+    group bluetooth net_bt_admin inet
     disabled
     oneshot
 
 service bt-sap /system/bin/sapd 15
-    class main
+    class late_start
     disabled
     oneshot
 
 service sapd /system/bin/sdptool add --channel=15 SAP
-    class main
+    class late_start
     user bluetooth
     group bluetooth net_bt_admin
     disabled
     oneshot
 
 service dund /system/bin/sdptool add --channel=1 DUN
-    class main
+    class late_start
     user bluetooth
     group bluetooth net_bt_admin
     disabled
-    oneshot    
+    oneshot 
 
 service bridgemgrd /system/bin/bridgemgrd
     class main
