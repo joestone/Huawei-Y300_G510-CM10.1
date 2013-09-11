@@ -324,10 +324,10 @@ on post-fs-data
 	mkdir /data/misc/wifi/hostapd 0770 wifi wifi
 	mkdir /data/misc/wifi/sockets 0770 wifi wifi
     mkdir /data/misc/wpa_supplicant 0770 wifi wifi
-#    mkdir /data/misc/wifi/load
-#    chmod 0775 /data/misc/wifi/load
-#    chown system system /data/misc/wifi/load/
- #   mkdir /data/misc/wifi/bin 0775 system system 
+    mkdir /data/misc/wifi/load
+    chmod 0775 /data/misc/wifi/load
+    chown system system /data/misc/wifi/load/
+    mkdir /data/misc/wifi/bin 0775 system system 
 	
 	
     chmod 0660 /data/misc/wifi/wpa_supplicant.conf
@@ -931,6 +931,12 @@ service dbus /system/bin/dbus-daemon --system --nofork
 
 on property:init.svc.wpa_supplicant=stopped
     stop dhcpcd
+
+service wlan_detect /system/bin/wlan_detect
+    class main
+    user root
+    group root
+    oneshot
 
 service p2p_supplicant /system/bin/wpa_supplicant \
     -ieth0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf -N \

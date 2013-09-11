@@ -26,6 +26,8 @@
  * OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
+//#define LOG_NDEBUG 0
 #include <unistd.h>
 #include <fcntl.h>
 #include <sys/mman.h>
@@ -38,7 +40,6 @@
 #include "pmem_bestfit_alloc.h"
 
 using namespace gralloc;
-using android::sp;
 
 // Common functions between userspace
 // and kernel allocators
@@ -87,7 +88,7 @@ static int alignPmem(int fd, size_t size, int align) {
     struct pmem_allocation allocation;
     allocation.size = size;
     allocation.align = align;
-    if (ioctl(fd, PMEM_ALLOCATE_ALIGNED, &allocation) < 0)
+    if (ioctl(fd, PMEM_ALLOCATE_ALIGNED, &allocation))
         return -errno;
     return 0;
 }
@@ -117,13 +118,13 @@ PmemUserspaceAlloc::~PmemUserspaceAlloc()
 
 int PmemUserspaceAlloc::init_pmem_area_locked()
 {
-    ALOGV("%s: Opening master pmem FD", __FUNCTION__);
+    ALOGD("%s: Opening master pmem FD", __FUNCTION__);
     int err = 0;
     int fd = open(mPmemDev, O_RDWR, 0);
     if (fd >= 0) {
         size_t size = 0;
         err = getPmemTotalSize(fd, &size);
-        ALOGV("%s: Total pmem size: %d", __FUNCTION__, size);
+        ALOGD("%s: Total pmem size: %d", __FUNCTION__, size);
         if (err < 0) {
             ALOGE("%s: PMEM_GET_TOTAL_SIZE failed (%d), limp mode", mPmemDev,
                   err);
@@ -158,7 +159,7 @@ int  PmemUserspaceAlloc::init_pmem_area()
     int err = mMasterFd;
     if (err == FD_INIT) {
         // first time, try to initialize pmem
-        ALOGV("%s: Initializing pmem area", __FUNCTION__);
+        ALOGD("%s: Initializing pmem area", __FUNCTION__);
         err = init_pmem_area_locked();
         if (err) {
             ALOGE("%s: failed to initialize pmem area", mPmemDev);

@@ -73,7 +73,7 @@ int AshmemAlloc::alloc_buffer(alloc_data& data)
         data.base = base;
         data.offset = offset;
         clean_buffer(base, data.size, offset, fd);
-        ALOGV("ashmem: Allocated buffer base:%p size:%d fd:%d",
+        ALOGD("ashmem: Allocated buffer base:%p size:%d fd:%d",
               base, data.size, fd);
 
     }
@@ -83,7 +83,7 @@ int AshmemAlloc::alloc_buffer(alloc_data& data)
 
 int AshmemAlloc::free_buffer(void* base, size_t size, int offset, int fd)
 {
-    ALOGV("ashmem: Freeing buffer base:%p size:%d fd:%d",
+    ALOGD("ashmem: Freeing buffer base:%p size:%d fd:%d",
           base, size, fd);
     int err = 0;
 
@@ -109,7 +109,7 @@ int AshmemAlloc::map_buffer(void **pBase, size_t size, int offset, int fd)
               strerror(errno));
         err = -errno;
     } else {
-        ALOGV("ashmem: Mapped buffer base:%p size:%d fd:%d",
+        ALOGD("ashmem: Mapped buffer base:%p size:%d fd:%d",
               base, size, fd);
     }
     return err;
@@ -117,7 +117,7 @@ int AshmemAlloc::map_buffer(void **pBase, size_t size, int offset, int fd)
 
 int AshmemAlloc::unmap_buffer(void *base, size_t size, int offset)
 {
-    ALOGV("ashmem: Unmapping buffer base: %p size: %d", base, size);
+    ALOGD("ashmem: Unmapping buffer base: %p size: %d", base, size);
     int err = munmap(base, size);
     if(err) {
         ALOGE("ashmem: Failed to unmap memory at %p: %s",

@@ -52,6 +52,12 @@ static void handle_uevent(hwc_context_t* ctx, const char* udata, int len)
     if(!(strncmp(str,"online@",strlen("online@")))) {
         strncpy(ctx->mHDMIEvent,str,strlen(str));
         ctx->hdmi_pending = true;
+        //Invalidate
+        if(!ctx->proc) {
+            ALOGE("%s: HWC proc not registered", __FUNCTION__);
+        } else {
+            ctx->proc->invalidate(ctx->proc);
+        }
     } else if(!(strncmp(str,"offline@",strlen("offline@")))) {
         ctx->hdmi_pending = false;
         ctx->mExtDisplay->processUEventOffline(str);

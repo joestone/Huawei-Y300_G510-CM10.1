@@ -130,7 +130,7 @@ bool configPrimVid(hwc_context_t *ctx, hwc_layer_1_t *layer) {
             info,
             ovutils::ZORDER_0,
             isFgFlag,
-            ovutils::ROT_DOWNSCALE_ENABLED);
+            ovutils::ROT_FLAG_DISABLED);
     ovutils::PipeArgs pargs[ovutils::MAX_PIPES] = { parg, parg, parg };
     ov.setSource(pargs, ovutils::OV_PIPE0);
 
@@ -196,7 +196,7 @@ bool configExtVid(hwc_context_t *ctx, hwc_layer_1_t *layer) {
             info,
             ovutils::ZORDER_0,
             isFgFlag,
-            ovutils::ROT_FLAGS_NONE);
+            ovutils::ROT_FLAG_DISABLED);
     ovutils::PipeArgs pargs[ovutils::MAX_PIPES] = { parg, parg, parg };
     ov.setSource(pargs, ovutils::OV_PIPE1);
 
@@ -242,7 +242,7 @@ bool configExtCC(hwc_context_t *ctx, hwc_layer_1_t *layer) {
             info,
             ovutils::ZORDER_1,
             isFgFlag,
-            ovutils::ROT_FLAGS_NONE);
+            ovutils::ROT_FLAG_DISABLED);
     ovutils::PipeArgs pargs[ovutils::MAX_PIPES] = { parg, parg, parg };
     ov.setSource(pargs, ovutils::OV_PIPE2);
 

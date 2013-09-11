@@ -101,12 +101,8 @@ private:
      * Can point to NullRotator or to Rotator*/
     RotatorBase* mRot;
 
-    //Whether rotator is used for 0-rot, downscale or otherwise
+    //Whether rotator is used for 0-rot or otherwise
     bool mRotUsed;
-
-    //Whether we will do downscale opt. This is just a request. If the frame is
-    //not a candidate, we might not do it.
-    bool mRotDownscaleOpt;
 
     /* Pipe open or closed */
     enum ePipeState {
@@ -120,7 +116,7 @@ private:
 
 template <int PANEL>
 GenericPipe<PANEL>::GenericPipe() : mRot(0), mRotUsed(false),
-        mRotDownscaleOpt(false), pipeState(CLOSED) {
+        pipeState(CLOSED) {
 }
 
 template <int PANEL>
@@ -151,7 +147,6 @@ bool GenericPipe<PANEL>::init(RotatorBase* rot)
     mRot = rot;
 
     mRotUsed = false;
-    mRotDownscaleOpt = false;
 
     // NOTE:init() on the rot is called by OverlayImpl
     // Pipes only have to worry about using rot, and not init or close.
@@ -187,10 +182,6 @@ inline bool GenericPipe<PANEL>::setSource(
         const utils::PipeArgs& args)
 {
     utils::PipeArgs newargs(args);
-    //Interlace video handling.
-    if(newargs.whf.format & INTERLACE_MASK) {
-        setMdpFlags(newargs.mdpFlags, utils::OV_MDP_DEINTERLACE);
-    }
     utils::Whf whf(newargs.whf);
     //Extract HAL format from lower bytes. Deinterlace if interlaced.
     whf.format = utils::getColorFormat(whf.format);
@@ -199,15 +190,7 @@ inline bool GenericPipe<PANEL>::setSource(
     newargs.whf = whf;
 
     //Cache if user wants 0-rotation
-    mRotUsed = newargs.rotFlags & utils::ROT_0_ENABLED;
-
-    int version = qdutils::MDPVersion::getInstance().getMDPVersion();
-    if ((version >= qdutils::MDP_V4_2) && (version < qdutils::MDSS_V5)) {
-        //Use rotator for downscale optimization
-        mRotUsed |= newargs.rotFlags & utils::ROT_DOWNSCALE_ENABLED;
-        mRotDownscaleOpt = newargs.rotFlags & utils::ROT_DOWNSCALE_ENABLED;
-    }
-
+    mRotUsed = newargs.rotFlags & utils::ROT_FLAG_ENABLED;
     mRot->setSource(newargs.whf);
     mRot->setFlags(newargs.mdpFlags);
     return mCtrlData.ctrl.setSource(newargs);
@@ -240,12 +223,6 @@ inline bool GenericPipe<PANEL>::setPosition(const utils::Dim& d)
 template <int PANEL>
 inline bool GenericPipe<PANEL>::commit() {
     bool ret = false;
-    int downscale = utils::ROT_DS_NONE;
-    mCtrlData.ctrl.doTransform();
-    if(mRotDownscaleOpt) {
-        downscale = mCtrlData.ctrl.doDownscale();
-        mRot->setDownscale(downscale);
-    }
     //If wanting to use rotator, start it.
     if(mRotUsed) {
         if(!mRot->commit()) {

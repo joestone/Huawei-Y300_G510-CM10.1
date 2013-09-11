@@ -58,21 +58,17 @@ void MdpCtrl::reset() {
 }
 
 bool MdpCtrl::close() {
-    bool result = true;
-
-    if(MSMFB_NEW_REQUEST != static_cast<int>(mOVInfo.id)) {
-        if(!mdp_wrapper::unsetOverlay(mFd.getFD(), mOVInfo.id)) {
-            ALOGE("MdpCtrl close error in unset");
-            result = false;
-        }
+    if(MSMFB_NEW_REQUEST == static_cast<int>(mOVInfo.id))
+        return true;
+    if(!mdp_wrapper::unsetOverlay(mFd.getFD(), mOVInfo.id)) {
+        ALOGE("MdpCtrl close error in unset");
+        return false;
     }
-
     reset();
     if(!mFd.close()) {
-        result = false;
+        return false;
     }
-
-    return result;
+    return true;
 }
 
 bool MdpCtrl::setSource(const utils::PipeArgs& args) {
@@ -143,47 +139,9 @@ void MdpCtrl::doTransform() {
     }
 }
 
-int MdpCtrl::doDownscale() {
-    int dscale_factor = utils::ROT_DS_NONE;
-    int src_w = mOVInfo.src_rect.w;
-    int src_h = mOVInfo.src_rect.h;
-    int dst_w = mOVInfo.dst_rect.w;
-    int dst_h = mOVInfo.dst_rect.h;
-    // We need this check to engage the rotator whenever possible to assist MDP
-    // in performing video downscale.
-    // This saves bandwidth and avoids causing the driver to make too many panel
-    // -mode switches between BLT (writeback) and non-BLT (Direct) modes.
-    // Use-case: Video playback [with downscaling and rotation].
-
-    if (dst_w && dst_h)
-    {
-        uint32_t dscale = (src_w * src_h) / (dst_w * dst_h);
-
-        if(dscale < 2) {
-            // Down-scale to > 50% of orig.
-            dscale_factor = utils::ROT_DS_NONE;
-        } else if(dscale < 4) {
-            // Down-scale to between > 25% to <= 50% of orig.
-            dscale_factor = utils::ROT_DS_HALF;
-        } else if(dscale < 8) {
-            // Down-scale to between > 12.5% to <= 25% of orig.
-            dscale_factor = utils::ROT_DS_FOURTH;
-        } else {
-            // Down-scale to <= 12.5% of orig.
-            dscale_factor = utils::ROT_DS_EIGHTH;
-        }
-    }
-
-    mOVInfo.src_rect.x >>= dscale_factor;
-    mOVInfo.src_rect.y >>= dscale_factor;
-    mOVInfo.src_rect.w >>= dscale_factor;
-    mOVInfo.src_rect.h >>= dscale_factor;
-
-    return dscale_factor;
-}
-
 bool MdpCtrl::set() {
     //deferred calcs, so APIs could be called in any order.
+    doTransform();
     utils::Whf whf = getSrcWhf();
     if(utils::isYuv(whf.format)) {
         normalizeCrop(mOVInfo.src_rect.x, mOVInfo.src_rect.w);

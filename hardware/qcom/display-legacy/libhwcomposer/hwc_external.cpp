@@ -129,7 +129,7 @@ void disp_mode_timing_type::set_info(struct fb_var_screeninfo &info) const
     info.reserved[0] = 0;
     info.reserved[1] = 0;
     info.reserved[2] = 0;
-    info.reserved[3] = info.reserved[3] | (video_format << 16);
+    info.reserved[3] = video_format;
 
     info.xoffset = 0;
     info.yoffset = 0;
@@ -492,7 +492,7 @@ void ExternalDisplay::setExternalDisplay(int connected)
         const char* prop = (connected) ? "1" : "0";
         // set system property
         property_set("hw.hdmiON", prop);
-        /* Trigger redraw */
+/* Trigger redraw */
         ALOGD_IF(DEBUG, "%s: Invalidate !!", __FUNCTION__);
         ctx->proc->invalidate(ctx->proc);
     }
@@ -570,3 +570,4 @@ int ExternalDisplay::enableHDMIVsync(int enable)
 }
 
 };
+

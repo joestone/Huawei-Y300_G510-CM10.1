@@ -71,9 +71,14 @@ MDPVersion::MDPVersion()
     close(fb_fd);
     mMDPVersion = mdp_version;
     mHasOverlay = false;
-    if(mMDPVersion >= MDP_V4_0)
+    if((mMDPVersion >= MDP_V4_0) || (mMDPVersion == MDP_V_UNKNOWN))
         mHasOverlay = true;
     mPanelType = panel_type;
+#ifdef TARGET_8x50
+    mMDPVersion = MDP_V3_1;
+    mHasOverlay = false;
+    mPanelType = 0;
+#endif
 }
 }; //namespace qdutils
 

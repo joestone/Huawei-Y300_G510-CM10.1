@@ -110,7 +110,7 @@ bool UIMirrorOverlay::configure(hwc_context_t *ctx, hwc_display_contents_1_t *li
                     info,
                     ovutils::ZORDER_0,
                     ovutils::IS_FG_OFF,
-                    ovutils::ROT_0_ENABLED);
+                    ovutils::ROT_FLAG_ENABLED);
             ovutils::PipeArgs pargs[ovutils::MAX_PIPES] = { parg, parg, parg };
             ov.setSource(pargs, dest);
 

@@ -141,11 +141,6 @@ enum { INPUT_3D_MASK = 0xFFFF0000,
 enum { BARRIER_LAND = 1,
     BARRIER_PORT = 2 };
 
-/* if SurfaceFlinger process gets killed in bypass mode, In initOverlay()
- * close all the pipes if it is opened after reboot.
- */
-int initOverlay(void);
-
 inline uint32_t format3D(uint32_t x) { return x & 0xFF000; }
 inline uint32_t colorFormat(uint32_t fmt) {
     /*TODO enable this block only if format has interlace / 3D info in top bits.
@@ -274,20 +269,8 @@ enum { MAX_PATH_LEN = 256 };
  * When a simple video playback on HDMI, no rotator is being used.(null r).
  * */
 enum eRotFlags {
-    ROT_FLAGS_NONE = 0,
-    //Use rotator for 0 rotation. It is used anyway for others.
-    ROT_0_ENABLED = 1 << 0,
-    //Enable rotator downscale optimization for hardware bugs not handled in
-    //driver. If downscale optimizatation is required,
-    //then rotator will be used even if its 0 rotation case.
-    ROT_DOWNSCALE_ENABLED = 1 << 1,
-};
-
-enum eRotDownscale {
-    ROT_DS_NONE = 0,
-    ROT_DS_HALF = 1,
-    ROT_DS_FOURTH = 2,
-    ROT_DS_EIGHTH = 3,
+    ROT_FLAG_DISABLED = 0,
+    ROT_FLAG_ENABLED = 1 // needed in rot
 };
 
 /* The values for is_fg flag for control alpha and transp
@@ -313,7 +296,6 @@ enum eMdpFlags {
     OV_MDP_MEMORY_ID_TYPE_FB = MDP_MEMORY_ID_TYPE_FB,
     OV_MDP_BACKEND_COMPOSITION = MDP_BACKEND_COMPOSITION,
     OV_MDP_BLEND_FG_PREMULT = MDP_BLEND_FG_PREMULT,
-    OV_MDP_180_FLIP = MDP_FLIP_UD|MDP_FLIP_LR,
 };
 
 enum eZorder {
@@ -373,7 +355,7 @@ struct PipeArgs {
     PipeArgs() : mdpFlags(OV_MDP_FLAGS_NONE),
         zorder(Z_SYSTEM_ALLOC),
         isFg(IS_FG_OFF),
-        rotFlags(ROT_FLAGS_NONE){
+        rotFlags(ROT_FLAG_DISABLED){
     }
 
     PipeArgs(eMdpFlags f, Whf _whf,
@@ -905,11 +887,6 @@ public:
     /* populate path */
     void setPath(const char* const dev);
 
-    /* retrieve path */
-    const char* getPath() {
-        return (const char*) mPath;
-    };
-
     /* Close fd if we have a valid fd. */
     bool close();
 
@@ -924,7 +901,6 @@ public:
 
     /* dump the state of the instance */
     void dump() const;
-
 private:
     /* helper enum for determine valid/invalid fd */
     enum { INVAL = -1 };

@@ -126,6 +126,7 @@ PRODUCT_PACKAGES += \
 PRODUCT_PACKAGES += \
     bluetoothd \
     libbluetoothd \
+    libbluedroid \
     hcitool \
     hciconfig \
     hciattach \

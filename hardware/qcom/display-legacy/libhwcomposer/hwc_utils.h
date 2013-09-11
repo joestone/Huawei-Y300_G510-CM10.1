@@ -25,8 +25,8 @@
 #define ALIGN_TO(x, align)     (((x) + ((align)-1)) & ~((align)-1))
 #define LIKELY( exp )       (__builtin_expect( (exp) != 0, true  ))
 #define UNLIKELY( exp )     (__builtin_expect( (exp) != 0, false ))
-#define MAX_NUM_DISPLAYS 4 //Yes, this is ambitious
-
+#define MAX_NUM_DISPLAYS 4
+#define HWC_BLIT 4
 //Fwrd decls
 struct hwc_context_t;
 struct framebuffer_device_t;
@@ -62,7 +62,7 @@ enum HWCCompositionType {
     HWC_USE_OVERLAY = HWC_OVERLAY, // This layer is to be handled by the overlay
     HWC_USE_BACKGROUND
                 = HWC_BACKGROUND,  // This layer is to be handled by TBD
-    HWC_USE_COPYBIT                // This layer is to be handled by copybit
+    HWC_USE_COPYBIT = HWC_BLIT,    // This layer is to be handled by copybit
 };
 
 enum {
@@ -151,9 +151,9 @@ struct hwc_context_t {
     const hwc_procs_t* proc;
     int numHwLayers;
     int overlayInUse;
-    hwc_display_t dpys[MAX_NUM_DISPLAYS];
     int swapInterval;
     double dynThreshold;
+    hwc_display_t dpys[MAX_NUM_DISPLAYS];
 
     //Framebuffer device
     framebuffer_device_t *mFbDev;
@@ -183,7 +183,6 @@ struct hwc_context_t {
 
     // flag that indicate whether secure/desecure session in progress
     bool mSecureConfig;
-
     bool hdmi_pending;
     char  mHDMIEvent[512];
 };

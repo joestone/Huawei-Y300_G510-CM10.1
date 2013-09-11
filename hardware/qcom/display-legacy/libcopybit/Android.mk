@@ -30,8 +30,12 @@ ifeq ($(TARGET_USES_C2D_COMPOSITION),true)
     include $(BUILD_SHARED_LIBRARY)
 else
     ifneq ($(TARGET_BOARD_PLATFORM),msm7x30)
-        LOCAL_CFLAGS += -DCOPYBIT_MSM7K=1
-        LOCAL_SRC_FILES := software_converter.cpp copybit.cpp
-        include $(BUILD_SHARED_LIBRARY)
+        ifeq ($(TARGET_BOARD_PLATFORM),qsd8k)
+            LOCAL_CFLAGS += -DCOPYBIT_QSD8K=1
+        else
+            LOCAL_CFLAGS += -DCOPYBIT_MSM7K=1
+        endif
+            LOCAL_SRC_FILES := software_converter.cpp copybit.cpp
+            include $(BUILD_SHARED_LIBRARY)
     endif
 endif

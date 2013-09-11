@@ -31,14 +31,13 @@
 #define GRALLOC_PMEMALLOC_H
 
 #include <linux/ion.h>
-#include <utils/RefBase.h>
 #include "memalloc.h"
 
 namespace gralloc {
 class PmemUserspaceAlloc : public IMemAlloc  {
 
     public:
-    class Allocator: public android::RefBase {
+    class Allocator {
         public:
         virtual ~Allocator() {};
         virtual ssize_t setSize(size_t size) = 0;
@@ -69,7 +68,7 @@ class PmemUserspaceAlloc : public IMemAlloc  {
     int mMasterFd;
     void* mMasterBase;
     const char* mPmemDev;
-    android::sp<Allocator> mAllocator;
+    Allocator* mAllocator;
     pthread_mutex_t mLock;
     int init_pmem_area();
     int init_pmem_area_locked();

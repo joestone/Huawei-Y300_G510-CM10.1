@@ -32,9 +32,13 @@
 
 #include "memalloc.h"
 #include "gr.h"
+#ifdef TARGET_8x50
+#include <linux/msm_ion.h>
+#else
 //#include <linux/ion.h>
 //XXX: Move to bionic
 #include "ion_msm.h"
+#endif
 
 namespace gralloc {
 

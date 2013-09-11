@@ -131,6 +131,33 @@ wifi.interface=eth0
 #wifi.supplicant_scan_interval=60
 wlan.driver.status=ok
 
+#BT
+#
+# system prop for requesting Master role in incoming Bluetooth connection.
+#
+ro.bluetooth.request.master=true
+
+#
+# system prop for Bluetooth FTP profile
+#
+ro.qualcomm.bluetooth.ftp=true
+
+#
+# system prop for Bluetooth SAP profile
+#
+ro.qualcomm.bluetooth.sap=true
+
+#
+# system prop for Bluetooth Auto connect for remote initated connections
+#
+ro.bluetooth.remote.autoconnect=true
+
+#
+#system property for Bluetooth discoverability timeout in seconds
+#0: Always discoverable
+debug.bt.discoverable_time=-1
+
+
 #TCP Fin Aggregation
 net.tcp.fin.aggregation = 1
 #Memory Cache

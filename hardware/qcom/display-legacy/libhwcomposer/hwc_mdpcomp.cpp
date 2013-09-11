@@ -125,15 +125,13 @@ void MDPComp::timeout_handler(void *udata) {
     ctx->proc->invalidate(ctx->proc);
 }
 
-void MDPComp::reset( hwc_context_t *ctx, hwc_display_contents_1_t* list ) {
+void MDPComp::reset( hwc_context_t *ctx, hwc_display_contents_1_t *list) {
     //Reset flags and states
     unsetMDPCompLayerFlags(ctx, list);
 
     sCurrentFrame.count = 0;
-    if(sCurrentFrame.pipe_layer) {
-        free(sCurrentFrame.pipe_layer);
-        sCurrentFrame.pipe_layer = NULL;
-    }
+    free(sCurrentFrame.pipe_layer);
+    sCurrentFrame.pipe_layer = NULL;
 
     //Reset MDP pipes
     sPipeMgr.reset();
@@ -276,6 +274,10 @@ int MDPComp::prepare(hwc_context_t *ctx, hwc_layer_1_t *layer,
         // commit - commit changes to mdp driver
         // queueBuffer - not here, happens when draw is called
 
+        ovutils::eTransform orient =
+            static_cast<ovutils::eTransform>(layer->transform);
+
+        ov.setTransform(orient, dest);
         ovutils::Whf info(hnd->width, hnd->height, hnd->format, hnd->size);
         ovutils::eMdpFlags mdpFlags = mdp_info.isVG ? ovutils::OV_MDP_PIPE_SHARE
                                                    : ovutils::OV_MDP_FLAGS_NONE;
@@ -288,21 +290,11 @@ int MDPComp::prepare(hwc_context_t *ctx, hwc_layer_1_t *layer,
                     ovutils::OV_MDP_BLEND_FG_PREMULT);
         }
 
-        if(layer->transform != HWC_TRANSFORM_ROT_180) {
-           ovutils::eTransform orient =
-               static_cast<ovutils::eTransform>(layer->transform);
-           ov.setTransform(orient, dest);
-        } else  {
-            ovutils::setMdpFlags(mdpFlags,
-                    ovutils::OV_MDP_180_FLIP);
-        }
-
-
         ovutils::PipeArgs parg(mdpFlags,
                                info,
                                zOrder,
                                isFG,
-                               ovutils::ROT_FLAGS_NONE);
+                               ovutils::ROT_FLAG_DISABLED);
 
         ovutils::PipeArgs pargs[MAX_PIPES] = { parg, parg, parg };
         if (!ov.setSource(pargs, dest)) {
@@ -371,12 +363,9 @@ bool MDPComp::is_doable(hwc_composer_device_1_t *dev, hwc_display_contents_1_t *
         return false;
     }
 
-    //MDP composition is not efficient if layer neeeds
-    //MDP rotator
+    //MDP composition is not efficient if rotation is needed.
     for(unsigned int i = 0; i < list->numHwLayers; ++i) {
-        // As MDP h/w supports flip operation, use MDP comp only for
-        // 180 transforms. Fail for any transform involving 90 (90, 270).
-        if(list->hwLayers[i].transform & HWC_TRANSFORM_ROT_90) {
+        if(list->hwLayers[i].transform) {
                 ALOGD_IF(isDebug(), "%s: orientation involved",__FUNCTION__);
                 return false;
         }
@@ -385,7 +374,7 @@ bool MDPComp::is_doable(hwc_composer_device_1_t *dev, hwc_display_contents_1_t *
     return true;
 }
 
-void MDPComp::setMDPCompLayerFlags(hwc_display_contents_1_t* list) {
+void MDPComp::setMDPCompLayerFlags(hwc_display_contents_1_t *list) {
 
     for(int index = 0 ; index < sCurrentFrame.count; index++ )
     {
@@ -425,7 +414,7 @@ void MDPComp::get_layer_info(hwc_layer_1_t* layer, int& flags) {
     }
 }
 
-int MDPComp::mark_layers(hwc_display_contents_1_t* list, layer_mdp_info* layer_info,
+int MDPComp::mark_layers(hwc_display_contents_1_t *list, layer_mdp_info* layer_info,
                                                     frame_info& current_frame) {
 
     int layer_count = list->numHwLayers;
@@ -496,7 +485,7 @@ void MDPComp::reset_layer_mdp_info(layer_mdp_info* layer_info, int count) {
     }
 }
 
-bool MDPComp::alloc_layer_pipes(hwc_display_contents_1_t* list,
+bool MDPComp::alloc_layer_pipes(hwc_display_contents_1_t *list,
                         layer_mdp_info* layer_info, frame_info& current_frame) {
 
     int layer_count = list->numHwLayers;
@@ -538,7 +527,7 @@ bool MDPComp::alloc_layer_pipes(hwc_display_contents_1_t* list,
 }
 
 //returns array of layers and their allocated pipes
-bool MDPComp::parse_and_allocate(hwc_context_t* ctx, hwc_display_contents_1_t* list,
+bool MDPComp::parse_and_allocate(hwc_context_t* ctx, hwc_display_contents_1_t *list,
                                                   frame_info& current_frame ) {
 
     int layer_count = list->numHwLayers;
@@ -604,17 +593,12 @@ int MDPComp::configure_var_pipe(hwc_context_t* ctx) {
 }
 #endif
 
-bool MDPComp::setup(hwc_context_t* ctx, hwc_display_contents_1_t* list) {
+bool MDPComp::setup(hwc_context_t* ctx, hwc_display_contents_1_t *list) {
     int nPipeIndex, vsync_wait, isFG;
     int numHwLayers = list->numHwLayers;
 
     frame_info &current_frame = sCurrentFrame;
     current_frame.count = 0;
-
-    if(current_frame.pipe_layer) {
-        free(current_frame.pipe_layer);
-        current_frame.pipe_layer = NULL;
-    }
 
     if(!ctx) {
        ALOGE("%s: invalid context", __FUNCTION__);
@@ -672,7 +656,7 @@ bool MDPComp::setup(hwc_context_t* ctx, hwc_display_contents_1_t* list) {
     return true;
 }
 
-void MDPComp::unsetMDPCompLayerFlags(hwc_context_t* ctx, hwc_display_contents_1_t* list)
+void MDPComp::unsetMDPCompLayerFlags(hwc_context_t* ctx, hwc_display_contents_1_t *list)
 {
     if (!list)
         return;
@@ -689,7 +673,7 @@ void MDPComp::unsetMDPCompLayerFlags(hwc_context_t* ctx, hwc_display_contents_1_
     }
 }
 
-int MDPComp::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
+int MDPComp::draw(hwc_context_t *ctx, hwc_display_contents_1_t *list) {
 
     if(!isEnabled()) {
         ALOGD_IF(isDebug(),"%s: MDP Comp. not enabled",__FUNCTION__);
@@ -725,7 +709,7 @@ int MDPComp::draw(hwc_context_t *ctx, hwc_display_contents_1_t* list) {
 
         /* reset Invalidator */
         if(idleInvalidator)
-           idleInvalidator->markForSleep();
+        idleInvalidator->markForSleep();
 
         ovutils::eDest dest;
 
@@ -820,7 +804,7 @@ bool MDPComp::init(hwc_context_t *dev) {
     return true;
 }
 
-bool MDPComp::configure(hwc_composer_device_1_t *dev,  hwc_display_contents_1_t* list) {
+bool MDPComp::configure(hwc_composer_device_1_t *dev,  hwc_display_contents_1_t *list) {
 
     if(!isEnabled()) {
         ALOGD_IF(isDebug(),"%s: MDP Comp. not enabled.", __FUNCTION__);

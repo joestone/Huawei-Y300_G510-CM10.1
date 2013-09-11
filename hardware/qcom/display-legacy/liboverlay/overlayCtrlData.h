@@ -84,12 +84,6 @@ public:
     /* dump the state of the object */
     void dump() const;
 
-    /* Perform transformation calculations */
-    void doTransform();
-
-    /* Performs downscale calculations */
-    int doDownscale();
-
 private:
     /* Retrieve screen info from underlying mdp */
     bool getScreenInfo(utils::ScreenInfo& info);
@@ -189,14 +183,6 @@ inline utils::ScreenInfo Ctrl::getScreenInfo() const {
 
 inline utils::Dim Ctrl::getCrop() const {
     return mMdp.getSrcRectDim();
-}
-
-inline void Ctrl::doTransform() {
-    return mMdp.doTransform();
-}
-
-inline int Ctrl::doDownscale() {
-    return mMdp.doDownscale();
 }
 
 inline Data::Data() {

@@ -134,10 +134,12 @@ static int hwc_prepare(hwc_composer_device_1 *dev, size_t numDisplays,
                 ctx->mOverlay->setState(ovutils::OV_CLOSED);
             }
             qdutils::CBUtils::checkforGPULayer(list);
+
         } else {
             ctx->overlayInUse = false;
             ctx->mOverlay->setState(ovutils::OV_CLOSED);
             ctx->qbuf->unlockAll();
+
         }
     }
     return 0;
@@ -147,24 +149,48 @@ static int hwc_eventControl(struct hwc_composer_device_1* dev, int dpy,
                              int event, int enabled)
 {
     int ret = 0;
+    static int prev_value, temp;
 
     hwc_context_t* ctx = (hwc_context_t*)(dev);
     private_module_t* m = reinterpret_cast<private_module_t*>(
                 ctx->mFbDev->common.module);
-    //XXX: Handle dpy
     switch(event) {
         case HWC_EVENT_VSYNC:
-            if (ctx->vstate.enable == enabled)
-                break;
+            if (enabled == prev_value){
+                //TODO see why HWC gets repeated events
+                ALOGD_IF(VSYNC_DEBUG, "%s - VSYNC is already %s",
+                        __FUNCTION__, (enabled)?"ENABLED":"DISABLED");
+            }
+            temp = ctx->vstate.enable;
+#ifndef NO_HW_VSYNC
+            if(ioctl(m->framebuffer->fd, MSMFB_OVERLAY_VSYNC_CTRL, &enabled) < 0)
+                ret = -errno;
+#endif
+            /* vsync state change logic */
+            if (enabled == 1) {
+                //unblock vsync thread
+                pthread_mutex_lock(&ctx->vstate.lock);
+                ctx->vstate.enable = true;
+                pthread_cond_signal(&ctx->vstate.cond);
+                pthread_mutex_unlock(&ctx->vstate.lock);
+            }
+            if (enabled == 0 && temp) {
+                //vsync thread will block
+                pthread_mutex_lock(&ctx->vstate.lock);
+                ctx->vstate.enable = false;
+                pthread_mutex_unlock(&ctx->vstate.lock);
+            }
+            ALOGD_IF (VSYNC_DEBUG, "VSYNC state changed from %s to %s",
+              (prev_value)?"ENABLED":"DISABLED", (enabled)?"ENABLED":"DISABLED");
+            prev_value = enabled;
+            /* vsync state change logic - end*/
 
-            pthread_mutex_lock(&ctx->vstate.lock);
-            ctx->vstate.enable = !!enabled;
-            pthread_cond_signal(&ctx->vstate.cond);
-
-            ALOGD_IF (VSYNC_DEBUG, "VSYNC state changed to %s",
-                                           (enabled)?"ENABLED":"DISABLED");
-            pthread_mutex_unlock(&ctx->vstate.lock);
-            break;
+             if(ctx->mExtDisplay->isHDMIConfigured() &&
+                (ctx->mExtDisplay->getExternalDisplay()==EXTERN_DISPLAY_FB1)) {
+                // enableHDMIVsync will return -errno on error
+                ret = ctx->mExtDisplay->enableHDMIVsync(enabled);
+             }
+           break;
         default:
             ret = -EINVAL;
     }
@@ -174,15 +200,12 @@ static int hwc_eventControl(struct hwc_composer_device_1* dev, int dpy,
 static int hwc_blank(struct hwc_composer_device_1* dev, int dpy, int blank)
 {
     //XXX: Handle based on dpy
-    hwc_context_t* ctx = (hwc_context_t*)(dev);
-    private_module_t* m = reinterpret_cast<private_module_t*>(
-        ctx->mFbDev->common.module);
     if(blank) {
+        hwc_context_t* ctx = (hwc_context_t*)(dev);
+        ctx->overlayInUse = false; //XXX added: needed?
         ctx->mOverlay->setState(ovutils::OV_CLOSED);
-        ctx->qbuf->unlockAllPrevious();
-        ioctl(m->framebuffer->fd, FBIOBLANK, FB_BLANK_POWERDOWN);
-    } else {
-        ioctl(m->framebuffer->fd, FBIOBLANK, FB_BLANK_UNBLANK);
+//        ctx->qbuf->unlockAllPrevious(); XXX: i think All is better??
+        ctx->qbuf->unlockAll();
     }
     return 0;
 }
@@ -273,11 +296,10 @@ static int hwc_device_open(const struct hw_module_t* module, const char* name,
         initContext(dev);
 
         //Setup HWC methods
+
         dev->device.common.tag     = HARDWARE_DEVICE_TAG;
 #ifdef NO_HW_VSYNC
-        ALOGI("%s: Faking hardware VSYNC", __FUNCTION__);
-#else
-        ALOGI("%s: Hardware VSYNC supported", __FUNCTION__);
+        ALOGI("%s: Faking Hardware VSYNC", __FUNCTION__);
 #endif
         dev->device.common.version = HWC_DEVICE_API_VERSION_1_0;
         dev->device.common.module  = const_cast<hw_module_t*>(module);
@@ -286,8 +308,8 @@ static int hwc_device_open(const struct hw_module_t* module, const char* name,
         dev->device.set            = hwc_set;
         dev->device.eventControl   = hwc_eventControl;
         dev->device.blank          = hwc_blank;
-        dev->device.query          = hwc_query;
         dev->device.registerProcs  = hwc_registerProcs;
+        dev->device.query          = hwc_query;
         *device                    = &dev->device.common;
         status = 0;
     }
