@@ -321,7 +321,8 @@ on post-fs-data
     mkdir /data/misc/wifi
     chmod 0770 /data/misc/wifi
     chown wifi wifi /data/misc/wifi/ 
-	mkdir /data/misc/wifi/hostapd 0770 wifi wifi
+#	mkdir /data/misc/wifi/hostapd 0770 wifi wifi
+#	mkdir /data/hostapd 0770 wifi wifi
 	mkdir /data/misc/wifi/sockets 0770 wifi wifi
     mkdir /data/misc/wpa_supplicant 0770 wifi wifi
     mkdir /data/misc/wifi/load
@@ -329,7 +330,7 @@ on post-fs-data
     chown system system /data/misc/wifi/load/
     mkdir /data/misc/wifi/bin 0775 system system 
 	
-	
+	chmod 0660 /data/misc/wifi/hostapd.conf
     chmod 0660 /data/misc/wifi/wpa_supplicant.conf
 	mkdir /data/misc/dhcp 0775 dhcp dhcp
 	chown dhcp dhcp /data/misc/dhcp
@@ -381,9 +382,9 @@ on post-fs-data
     chown system system /sys/devices/platform/msm_sdcc.3/polling
     chown system system /sys/devices/platform/msm_sdcc.4/polling
 
-   #Provide the access to hostapd.conf only to root and group
-    chmod 0660 /data/misc/wifi/hostapd.conf
-	
+#Provide the access to hostapd.conf only to root and group
+    chmod 0660 /data/hostapd/hostapd.conf
+ 	
 #END From Huawei.rc
 
     # If there is no fs-post-data action in the init.<device>.rc file, you
@@ -413,9 +414,6 @@ on post-fs-data
     chmod 0660 /dev/assd
     chown smartcard smartcard /dev/assd
 # DTS2012050802343 yanzhennan 20120508 end
-#/*< DTS2012070901677 fanran 20120709 for dingzhu C+W begin */
-    insmod /system/lib/modules/pppoe.ko
-#/* DTS2012070901677 fanran 20120709 for dingzhu C+W end >*/
 on boot
 	start gpu_dcvsd
 	start qcamerasvr
@@ -813,7 +811,9 @@ on property:vold.decrypt=trigger_shutdown_framework
 	
  
 
- 
+#/*< DTS2012070901677 fanran 20120709 for dingzhu C+W begin */
+    insmod /system/lib/modules/pppoe.ko
+#/* DTS2012070901677 fanran 20120709 for dingzhu C+W end >*/ 
 
 chmod 0664 /dev/accel
 chmod 0664 /dev/compass_aot
@@ -938,18 +938,17 @@ service wlan_detect /system/bin/wlan_detect
     group root
     oneshot
 
-service p2p_supplicant /system/bin/wpa_supplicant \
-    -ieth0 -Dnl80211 -c/data/misc/wifi/wpa_supplicant.conf -N \
-    -ip2p0 -Dnl80211 -c/data/misc/wifi/p2p_supplicant.conf -e/data/misc/wifi/entropy.bin 
-	class main
+service p2p_supplicant /system/bin/wpa_supplicant -Dnl80211 -ieth0 -e/data/misc/wifi/entropy.bin -puse_p2p_group_interface=1 -W -c/data/misc/wifi/wpa_supplicant.conf
+    class main
+    group wifi inet
     socket wpa_eth0 dgram 660 wifi wifi
     disabled
     oneshot
- 	
 
-service wpa_supplicant /system/bin/wpa_supplicant -Dnl80211 -ieth0 -W -e/data/misc/wifi/entropy.bin -c/data/misc/wifi/wpa_supplicant.conf 
-	class main
-	socket wpa_eth0 dgram 0660 wifi wifi
+service wpa_supplicant /system/bin/wpa_supplicant -Dnl80211 -ieth0 -e/data/misc/wifi/entropy.bin -puse_p2p_group_interface=1 -W -c/data/misc/wifi/wpa_supplicant.conf
+    class main
+    group wifi inet
+    socket wpa_eth0 dgram 660 wifi wifi
     disabled
     oneshot
 
@@ -963,28 +962,17 @@ service iprenew_eth0 /system/bin/dhcpcd -n
     disabled        
     oneshot	
 	
-#service p2p_supplicant /system/bin/wpa_supplicant -Dnl80211 -ieth0 -puse_p2p_group_interface=1 -W -c/data/misc/wifi/wpa_supplicant.conf
-#class main
-#socket wpa_eth0 dgram 0660 wifi wifi
-#disabled
-#oneshot
+service iprenew_p2p /system/bin/dhcpcd -n p2p
+    class main
+    disabled
+    oneshot
 
-#service dhcpcd_p2p /system/bin/dhcpcd -aABKL
-#     class main
-#     disabled
-#     oneshot
-
-#service iprenew_p2p /system/bin/dhcpcd -n
-#    class main
-#    disabled
-#    oneshot
-
-service hostapd /system/bin/hostapd /data/misc/wifi/hostapd.conf
-    socket hostapd_eth0 dgram 660 wifi wifi
-    group wifi inet
+service hostapd /system/bin/hostapd -dddd /data/misc/wifi/hostapd.conf
+    class late_start
+    user root
+    group root
     oneshot
     disabled
-
 
 service nfc_check /system/bin/nfc_check
     class main
@@ -997,11 +985,8 @@ service installd /system/bin/installd
     class main
     socket installd stream 600 system system
 
-# /* <DTS2012112105793 sunwenyong 20121121 begin */
-# /*this service has been started in init.huawei.rc ,delete the repeat part */
-# /* DTS2012112105793 sunwenyong 20121121 end> */
-service mpdecision /system/bin/mpdecision --no_sleep --avg_comp
-        class late_start
+service mpdecision /system/bin/mpdecision --Nw 5.4 --Ts 350 --no_sleep --avg_comp --single_core_while_panel_off 
+    class late_start
 	user root
 	disabled
 
@@ -1136,17 +1121,6 @@ service bluetoothd /system/bin/bluetoothd -n
     disabled
 #/* DTS2012020604357 zhangyun 20120206 end > */
     
-service hci_dev_up /system/bin/hci_dev_state --dev_up
-    user root
-    group bluetooth system
-    disabled 
-    oneshot
-    
-service hci_dev_down /system/bin/hci_dev_state --dev_down
-    user root
-    group bluetooth system
-    disabled 
-    oneshot    
 
 service hciattach /system/bin/sh /system/etc/init.qcom.bt.sh
     class late_start
@@ -1267,5 +1241,11 @@ service thermald /system/bin/thermald
     group root
     disabled
 
-on property:persist.thermal.monitor=true
-    start thermald
+#on property:persist.thermal.monitor=true
+#    start thermald
+service abtfilt /system/bin/abtfilt -a -d -z -n -q -v -s -w eth0
+    class late_start
+    user root
+    group bluetooth net_bt_admin inet net_admin net_raw
+    disabled
+    oneshot 

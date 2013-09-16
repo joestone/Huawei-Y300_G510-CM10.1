@@ -24,7 +24,6 @@ PRODUCT_COPY_FILES += \
 	vendor/huawei/daytona-common/proprietary/bin/gps_check:system/bin/gps_check \
     vendor/huawei/daytona-common/proprietary/bin/gpu_dcvsd:system/bin/gpu_dcvsd \
 	vendor/huawei/daytona-common/proprietary/bin/hci_qcomm_init:system/bin/hci_qcomm_init \
-	vendor/huawei/daytona-common/proprietary/bin/hostapd:system/bin/hostapd \
 	vendor/huawei/daytona-common/proprietary/bin/load_oemlogo:system/bin/load_oemlogo \
     vendor/huawei/daytona-common/proprietary/bin/mm-pp-daemon:system/bin/mm-pp-daemon \
     vendor/huawei/daytona-common/proprietary/bin/mm-qcamera-daemon:system/bin/mm-qcamera-daemon \
@@ -196,7 +195,7 @@ vendor/huawei/daytona-common/proprietary/lib/qnet-plugin.so:system/lib/qnet-plug
     vendor/huawei/daytona-common/proprietary/lib/libpn544_fw.so:system/lib/libpn544_fw.so \
     vendor/huawei/daytona-common/proprietary/lib/libifdsmartcardapi.so:system/lib/libifdsmartcardapi.so \
 	vendor/huawei/daytona-common/proprietary/bin/nfc_check:system/bin/nfc_check \
-	vendor/huawei/daytona-common/proprietary/bin/mpdecision:system/bin/mpdecision \
+	vendor/huawei/daytona-common/proprietary/bin/mpdecision2:system/bin/mpdecision \
     vendor/huawei/daytona-common/proprietary/lib/libhdr.so:system/lib/libhdr.so \
     vendor/huawei/daytona-common/proprietary/lib/libC2D2.so:system/lib/libC2D2.so \
     vendor/huawei/daytona-common/proprietary/lib/libc2d2_z180.so:system/lib/libc2d2_z180.so \

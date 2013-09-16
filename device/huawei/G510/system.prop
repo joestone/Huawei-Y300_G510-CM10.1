@@ -68,7 +68,7 @@ com.qc.hardware=true
 dev.pm.dyn_samplingrate=1
 dev.pm.dyn_sample_period=700000
 ro.vendor.extension_library=/system/lib/libqc-opt.so
-persist.thermal.monitor=true
+#persist.thermal.monitor=true
 ro.hw_plat=7x27A
 
 ########################################        Telephony
