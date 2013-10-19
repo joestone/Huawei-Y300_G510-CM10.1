@@ -16,8 +16,6 @@
 #define MSM_ROTATOR_IOCTL_MIRROR_FLIP  \
 	      _IOW(MSM_ROTATOR_IOCTL_MAGIC, 4, int)
 #endif
-#define MSM_ROTATOR_IOCTL_BUFFER_SYNC   \
-		_IOW(MSM_ROTATOR_IOCTL_MAGIC, 5, struct msm_rotator_buf_sync)
 
 #define ROTATOR_VERSION_01	0xA5B4C301
 
@@ -25,13 +23,6 @@ enum rotator_clk_type {
 	ROTATOR_CORE_CLK,
 	ROTATOR_PCLK,
 	ROTATOR_IMEM_CLK
-};
-
-struct msm_rotator_buf_sync {
-	uint32_t session_id;
-	uint32_t flags;
-	int acq_fen_fd;
-	int rel_fen_fd;
 };
 
 struct msm_rotator_img_info {
@@ -54,7 +45,6 @@ struct msm_rotator_data_info {
 	unsigned int version_key;
 	struct msmfb_data src_chroma;
 	struct msmfb_data dst_chroma;
-	uint32_t wait_for_finish;
 };
 
 struct msm_rot_clocks {

@@ -164,16 +164,16 @@
 /dev/ttyHSL1              0660   system     system
 /dev/tty_sdio_00          0660   system     system
 /dev/usb_accessory        0660   root       usb
-/dev/video*	          0660   system     camera
-/dev/media*	          0660   system     camera
-/dev/v4l-subdev*          0660   system     camera
+/dev/video*	          0666   system     camera
+/dev/media*	          0666   system     camera
+/dev/v4l-subdev*          0666   system     camera
 #/* DTS2012080303947 gefangyong 20120820 end >*/
 /dev/tun                  0660   system     vpn
 /dev/msm_qcelp_in         0660  system       audio
 /dev/msm_evrc_in          0660  system       audio
 /dev/msm_preproc_ctl      0660  system       audio
 #regular apps need to be able to open ion
-/dev/ion                  0664   system     system
+/dev/ion                  0777   system     system
 /dev/msm_qcelp            0660  system       audio
 /dev/msm_evrc             0660  system       audio
 /dev/msm_acdb             0660  system     audio

@@ -1,6 +1,6 @@
 /*
 * Copyright (C) 2008 The Android Open Source Project
-* Copyright (c) 2010-2012, Code Aurora Forum. All rights reserved.
+* Copyright (c) 2010-2012, The Linux Foundation. All rights reserved.
 *
 * Licensed under the Apache License, Version 2.0 (the "License");
 * you may not use this file except in compliance with the License.
@@ -17,9 +17,6 @@
 
 #include "overlayUtils.h"
 #include "overlayMdp.h"
-
-#undef ALOG_TAG
-#define ALOG_TAG "overlay"
 
 namespace ovutils = overlay::utils;
 namespace overlay {
@@ -58,17 +55,21 @@ void MdpCtrl::reset() {
 }
 
 bool MdpCtrl::close() {
-    if(MSMFB_NEW_REQUEST == static_cast<int>(mOVInfo.id))
-        return true;
-    if(!mdp_wrapper::unsetOverlay(mFd.getFD(), mOVInfo.id)) {
-        ALOGE("MdpCtrl close error in unset");
-        return false;
+    bool result = true;
+
+    if(MSMFB_NEW_REQUEST != static_cast<int>(mOVInfo.id)) {
+        if(!mdp_wrapper::unsetOverlay(mFd.getFD(), mOVInfo.id)) {
+            ALOGE("MdpCtrl close error in unset");
+            result = false;
+        }
     }
+
     reset();
     if(!mFd.close()) {
-        return false;
+        result = false;
     }
-    return true;
+
+    return result;
 }
 
 bool MdpCtrl::setSource(const utils::PipeArgs& args) {
@@ -92,30 +93,48 @@ bool MdpCtrl::setCrop(const utils::Dim& d) {
 }
 
 bool MdpCtrl::setPosition(const overlay::utils::Dim& d,
-        int fbw, int fbh)
+        int fbw, int fbh,  const utils::eTransform& orientation)
 {
     ovutils::Dim dim(d);
     ovutils::Dim ovsrcdim = getSrcRectDim();
-    // Scaling of upto a max of 20 times supported
-    if(dim.w >(ovsrcdim.w * ovutils::getOverlayMagnificationLimit())){
-        dim.w = ovutils::getOverlayMagnificationLimit() * ovsrcdim.w;
-        dim.x = (fbw - dim.w) / 2;
-    }
-    if(dim.h >(ovsrcdim.h * ovutils::getOverlayMagnificationLimit())) {
-        dim.h = ovutils::getOverlayMagnificationLimit() * ovsrcdim.h;
-        dim.y = (fbh - dim.h) / 2;
+
+    // Get scaling limit supported by MDP
+    // 8 - for MDP 400, and 20 for versions higher than 400
+
+    uint32_t mdpMagLimit = ovutils::getOverlayMagnificationLimit();
+
+    if(orientation & ovutils::OVERLAY_TRANSFORM_ROT_90 ) {
+       if(dim.h >(ovsrcdim.w * mdpMagLimit)){
+          dim.h = mdpMagLimit * ovsrcdim.w;
+          dim.y = (fbw - dim.h) / 2;
+       }
+       if(dim.w >(ovsrcdim.h * mdpMagLimit)) {
+          dim.w = mdpMagLimit * ovsrcdim.h;
+          dim.x = (fbh - dim.w) / 2;
+       }
+    } else {
+       if(dim.w >(ovsrcdim.w * mdpMagLimit)){
+          dim.w = mdpMagLimit * ovsrcdim.w;
+          dim.x = (fbw - dim.w) / 2;
+       }
+       if(dim.h >(ovsrcdim.h * mdpMagLimit)) {
+          dim.h = mdpMagLimit* ovsrcdim.h;
+          dim.y = (fbh - dim.h) / 2;
+       }
     }
 
     setDstRectDim(dim);
     return true;
 }
 
+const utils::eTransform&  MdpCtrl::getTransform() {
+    return mOrientation;
+}
+
 bool MdpCtrl::setTransform(const utils::eTransform& orient,
         const bool& rotUsed) {
     int rot = utils::getMdpOrient(orient);
     setUserData(rot);
-    //getMdpOrient will switch the flips if the source is 90 rotated.
-    //Clients in Android dont factor in 90 rotation while deciding the flip.
     mOrientation = static_cast<utils::eTransform>(rot);
 
     //Rotator can be requested by client even if layer has 0 orientation.
@@ -197,11 +216,13 @@ bool MdpCtrl::get() {
 void MdpCtrl::adjustSrcWhf(const bool& rotUsed) {
     if(rotUsed) {
         utils::Whf whf = getSrcWhf();
+#ifndef QCOM_MISSING_PIXEL_FORMATS
         if(whf.format == MDP_Y_CRCB_H2V2_TILE ||
                 whf.format == MDP_Y_CBCR_H2V2_TILE) {
             whf.w = utils::alignup(whf.w, 64);
             whf.h = utils::alignup(whf.h, 32);
         }
+#endif
         //For example: If original format is tiled, rotator outputs non-tiled,
         //so update mdp's src fmt to that.
         whf.format = utils::getRotOutFmt(whf.format);

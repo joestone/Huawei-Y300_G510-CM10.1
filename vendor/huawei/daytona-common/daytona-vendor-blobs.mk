@@ -40,14 +40,21 @@ PRODUCT_COPY_FILES += \
     vendor/huawei/daytona-common/proprietary/bin/thermald:system/bin/thermald \
     vendor/huawei/daytona-common/proprietary/bin/v4l2-qcamera-app:system/bin/v4l2-qcamera-app \
     vendor/huawei/daytona-common/proprietary/bin/write_NV_114:system/bin/write_NV_114 \
-	vendor/huawei/daytona-common/proprietary/etc/firmware/yamato_pfp.fw:system/etc/firmware/yamato_pfp.fw \
+	vendor/huawei/daytona-common/proprietary/etc/firmware/a225_pfp.fw:system/etc/firmware/a225_pfp.fw \
+    vendor/huawei/daytona-common/proprietary/etc/firmware/a225_pm4.fw:system/etc/firmware/a225_pm4.fw \
+    vendor/huawei/daytona-common/proprietary/etc/firmware/a225p5_pm4.fw:system/etc/firmware/a225p5_pm4.fw \
+    vendor/huawei/daytona-common/proprietary/etc/firmware/leia_pfp_470.fw:system/etc/firmware/leia_pfp_470.fw \
+    vendor/huawei/daytona-common/proprietary/etc/firmware/leia_pm4_470.fw:system/etc/firmware/leia_pm4_470.fw \
+    vendor/huawei/daytona-common/proprietary/etc/firmware/yamato_pfp.fw:system/etc/firmware/yamato_pfp.fw \
     vendor/huawei/daytona-common/proprietary/etc/firmware/yamato_pm4.fw:system/etc/firmware/yamato_pm4.fw \
     vendor/huawei/daytona-common/proprietary/lib/egl/eglsubAndroid.so:system/lib/egl/eglsubAndroid.so \
     vendor/huawei/daytona-common/proprietary/lib/egl/libEGL_adreno200.so:system/lib/egl/libEGL_adreno200.so \
     vendor/huawei/daytona-common/proprietary/lib/egl/libGLESv1_CM_adreno200.so:system/lib/egl/libGLESv1_CM_adreno200.so \
     vendor/huawei/daytona-common/proprietary/lib/egl/libGLESv2_adreno200.so:system/lib/egl/libGLESv2_adreno200.so \
-    vendor/huawei/daytona-common/proprietary/lib/egl/libGLESv2S3D_adreno200.so:system/lib/egl/libGLESv2S3D_adreno200.so \
     vendor/huawei/daytona-common/proprietary/lib/egl/libq3dtools_adreno200.so:system/lib/egl/libq3dtools_adreno200.so \
+    vendor/huawei/daytona-common/proprietary/lib/libgsl.so:system/lib/libgsl.so \
+    vendor/huawei/daytona-common/proprietary/lib/libOpenVG.so:system/lib/libOpenVG.so \
+    vendor/huawei/daytona-common/proprietary/lib/libsc-a2xx.so:system/lib/libsc-a2xx.so \
     vendor/huawei/daytona-common/proprietary/lib/hw/camera.msm7x27a.so:system/lib/hw/camera.msm7x27a.so \
     vendor/huawei/daytona-common/proprietary/lib/hw/sensors.default.so:system/lib/hw/sensors.default.so \
 	vendor/huawei/daytona-common/proprietary/lib/hw/nfc.huawei.so:system/lib/hw/nfc.huawei.so \
@@ -95,7 +102,6 @@ PRODUCT_COPY_FILES += \
     vendor/huawei/daytona-common/proprietary/lib/libgestureservice.so:system/lib/libgestureservice.so \
     vendor/huawei/daytona-common/proprietary/lib/libgps.utils.so:system/lib/libgps.utils.so \
 	vendor/huawei/daytona-common/proprietary/lib/libgsdi_exp.so:system/lib/libgsdi_exp.so \
-    vendor/huawei/daytona-common/proprietary/lib/libgsl.so:system/lib/libgsl.so \
     vendor/huawei/daytona-common/proprietary/lib/libgstk_exp.so:system/lib/libgstk_exp.so \
     vendor/huawei/daytona-common/proprietary/lib/libhwnv.so:obj/lib/libhwnv.so \
     vendor/huawei/daytona-common/proprietary/lib/libhwrpc.so:system/lib/libhwrpc.so \
@@ -127,6 +133,7 @@ PRODUCT_COPY_FILES += \
 	vendor/huawei/daytona-common/proprietary/lib/libmmstillomx.so:system/lib/libmmstillomx.so \
     vendor/huawei/daytona-common/proprietary/lib/libnetmgr.so:system/lib/libnetmgr.so \
 	vendor/huawei/daytona-common/proprietary/lib/libnv.so:system/lib/libnv.so \
+	vendor/huawei/daytona-common/proprietary/lib/libnv.so:obj/lib/libnv.so \
     vendor/huawei/daytona-common/proprietary/lib/liboem_rapi.so:system/lib/liboem_rapi.so \
     vendor/huawei/daytona-common/proprietary/lib/liboemcamera.so:system/lib/liboemcamera.so \
     vendor/huawei/daytona-common/proprietary/lib/liboeminfo.so:system/lib/liboeminfo.so \
@@ -157,7 +164,7 @@ PRODUCT_COPY_FILES += \
     vendor/huawei/daytona-common/proprietary/lib/libOmxWmaDec.so:system/lib/libOmxWmaDec.so \
     vendor/huawei/daytona-common/proprietary/lib/libOmxWmvDec.so:system/lib/libOmxWmvDec.so \
     vendor/huawei/daytona-common/proprietary/lib/liboncrpc.so:system/lib/liboncrpc.so \
-    vendor/huawei/daytona-common/proprietary/lib/libOpenVG.so:system/lib/libOpenVG.so \
+    vendor/huawei/daytona-common/proprietary/lib/liboncrpc.so:obj/lib/liboncrpc.so \
     vendor/huawei/daytona-common/proprietary/lib/libpbmlib.so:system/lib/libpbmlib.so \
 	vendor/huawei/daytona-common/proprietary/lib/libqcci_legacy.so:system/lib/libqcci_legacy.so \
     vendor/huawei/daytona-common/proprietary/lib/libqc-opt.so:system/lib/libqc-opt.so \
@@ -181,10 +188,10 @@ PRODUCT_COPY_FILES += \
     vendor/huawei/daytona-common/proprietary/lib/libwmsts.so:system/lib/libwmsts.so \
 	vendor/huawei/daytona-common/proprietary/lib/libxml.so:system/lib/libxml.so \
 	vendor/huawei/daytona-common/proprietary/lib/libzy_imgdenoise.so:system/lib/libzy_imgdenoise.so \
-vendor/huawei/daytona-common/proprietary/bin/wlan_detect:system/bin/wlan_detect \
-vendor/huawei/daytona-common/proprietary/bin/qosmgr:system/bin/qosmgr \
-vendor/huawei/daytona-common/proprietary/lib/libwidevine.so:system/lib/libwidevine.so \
-vendor/huawei/daytona-common/proprietary/lib/qnet-plugin.so:system/lib/qnet-plugin.so \
+	vendor/huawei/daytona-common/proprietary/bin/wlan_detect:system/bin/wlan_detect \
+	vendor/huawei/daytona-common/proprietary/bin/qosmgr:system/bin/qosmgr \
+	vendor/huawei/daytona-common/proprietary/lib/libwidevine.so:system/lib/libwidevine.so \
+	vendor/huawei/daytona-common/proprietary/lib/qnet-plugin.so:system/lib/qnet-plugin.so \
 	vendor/huawei/daytona-common/proprietary/framework/qcnvitems.jar:system/framework/qcnvitems.jar \
 	vendor/huawei/daytona-common/proprietary/framework/qcrilhook.jar:system/framework/qcrilhook.jar \
 	vendor/huawei/daytona-common/proprietary/framework/org.simalliance.openmobileapi.jar:system/framework/org.simalliance.openmobileapi.jar \
@@ -197,17 +204,5 @@ vendor/huawei/daytona-common/proprietary/lib/qnet-plugin.so:system/lib/qnet-plug
 	vendor/huawei/daytona-common/proprietary/bin/nfc_check:system/bin/nfc_check \
 	vendor/huawei/daytona-common/proprietary/bin/mpdecision2:system/bin/mpdecision \
     vendor/huawei/daytona-common/proprietary/lib/libhdr.so:system/lib/libhdr.so \
-    vendor/huawei/daytona-common/proprietary/lib/libC2D2.so:system/lib/libC2D2.so \
-    vendor/huawei/daytona-common/proprietary/lib/libc2d2_z180.so:system/lib/libc2d2_z180.so \
-    vendor/huawei/daytona-common/proprietary/lib/libsc-a2xx.so:system/lib/libsc-a2xx.so \
-    vendor/huawei/daytona-common/proprietary/lib/libmm-omxcore.so:system/lib/libmm-omxcore.so \
     vendor/huawei/daytona-common/proprietary/lib/libmmirunning.so:system/lib/libmmirunning.so \
-#	vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/load/caldata.bin:system/etc/firmware/ath6k/load/caldata.bin \
-#	vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/load/Cal_powerTuned_pa.bin:system/etc/firmware/ath6k/load/Cal_powerTuned_pa.bin \
-#    vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/athtcmd_ram.bin:system/etc/firmware/ath6k/athtcmd_ram.bin \
-#    vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/bdata.SD31.bin:system/etc/firmware/ath6k/bdata.SD31.bin \
-#	vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/caldata.bin:system/etc/firmware/ath6k/caldata.bin \
-#	vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/fw-3.bin:system/etc/firmware/ath6k/fw-3.bin \
-#	vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/nullTestFlow.bin:system/etc/firmware/ath6k/nullTestFlow.bin \
-#	vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/softmac:system/etc/firmware/ath6k/softmac \
-#	vendor/huawei/daytona-common/proprietary/etc/firmware/ath6k/utf.bin:system/etc/firmware/ath6k/utf.bin \
+    vendor/huawei/daytona-common/proprietary/lib/libmm-omxcore.so:system/lib/libmm-omxcore.so \

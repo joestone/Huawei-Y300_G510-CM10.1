@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,6 +25,7 @@
 
 #include <cutils/log.h>
 #include <cutils/ashmem.h>
+#include <utils/RefBase.h>
 
 #include "gralloc_priv.h"
 #include <fb_priv.h>
@@ -70,7 +71,6 @@ class gpu_context_t : public alloc_device_t {
     private:
    IAllocController* mAllocCtrl;
     void getGrallocInformationFromFormat(int inputFormat,
-                                         int *colorFormat,
                                          int *bufferType);
 };
 }

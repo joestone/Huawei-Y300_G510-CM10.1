@@ -22,3 +22,6 @@ obj-$(CONFIG_MTD_SPEAR_SMI)	+= spear_smi.o
 obj-$(CONFIG_MTD_SST25L)	+= sst25l.o
 
 CFLAGS_docg3.o			+= -I$(src)
+
+# For compile with GCC 4.6
++CFLAGS_msm_nand.o = -Wno-maybe-uninitialized

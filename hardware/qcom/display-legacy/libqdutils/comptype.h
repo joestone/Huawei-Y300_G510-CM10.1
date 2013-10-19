@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -10,7 +10,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Code Aurora Forum, Inc. nor the names of its
+ *   * Neither the name of The Linux Foundation nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -33,7 +33,7 @@
 #include <stdint.h>
 #include <utils/Singleton.h>
 #include <cutils/properties.h>
-#include <mdp_version.h>
+
 using namespace android;
 namespace qdutils {
 // Enum containing the supported composition types
@@ -61,33 +61,19 @@ class QCCompositionType : public Singleton <QCCompositionType>
 inline QCCompositionType::QCCompositionType()
 {
     char property[PROPERTY_VALUE_MAX];
-    mCompositionType = 0;
-    if (property_get("debug.sf.hw", property, NULL) > 0) {
-        if(atoi(property) == 0) {
-            mCompositionType = COMPOSITION_TYPE_CPU;
-        } else { //debug.sf.hw = 1
-            property_get("debug.composition.type", property, NULL);
-            if (property == NULL) {
-                mCompositionType = COMPOSITION_TYPE_GPU;
-            } else if ((strncmp(property, "mdp", 3)) == 0) {
-                mCompositionType = COMPOSITION_TYPE_MDP;
-            } else if ((strncmp(property, "c2d", 3)) == 0) {
-                mCompositionType = COMPOSITION_TYPE_C2D;
-            } else if ((strncmp(property, "dyn", 3)) == 0) {
-                 if (qdutils::MDPVersion::getInstance().getMDPVersion() < 400)
-                     mCompositionType =
-                         COMPOSITION_TYPE_DYN |COMPOSITION_TYPE_MDP;
-                 else
-                     mCompositionType =
-                         COMPOSITION_TYPE_DYN|COMPOSITION_TYPE_C2D;
-            } else {
-                mCompositionType = COMPOSITION_TYPE_GPU;
-            }
-        }
-    } else { //debug.sf.hw is not set. Use cpu composition
-        mCompositionType = COMPOSITION_TYPE_CPU;
-    }
+    mCompositionType = COMPOSITION_TYPE_GPU;
+    if (property_get("debug.composition.type", property, "gpu") > 0) {
+        if ((strncmp(property, "mdp", 3)) == 0) {
+            mCompositionType = COMPOSITION_TYPE_MDP;
+        } else if ((strncmp(property, "c2d", 3)) == 0) {
+            mCompositionType = COMPOSITION_TYPE_C2D;
+        } else if ((strncmp(property, "dyn", 3)) == 0) {
+            mCompositionType = COMPOSITION_TYPE_DYN | COMPOSITION_TYPE_MDP;
 
+        }
+    }
 }
+
 }; //namespace qdutils
+ANDROID_SINGLETON_STATIC_INSTANCE(qdutils::QCCompositionType);
 #endif //INCLUDE_LIBQCOM_COMPTYPES

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -10,7 +10,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Code Aurora Forum, Inc. nor the names of its
+ *   * Neither the name of The Linux Foundation nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -32,19 +32,26 @@
 #include "gralloc_priv.h"
 #include "alloc_controller.h"
 #include "memalloc.h"
-#ifdef USE_ION
 #include "ionalloc.h"
-#else
-#include "pmemalloc.h"
-#include "ashmemalloc.h"
-#endif
 #include "gr.h"
 #include "comptype.h"
 
-ANDROID_SINGLETON_STATIC_INSTANCE(qdutils::QCCompositionType);
+#ifdef VENUS_COLOR_FORMAT
+#include <media/msm_media_info.h>
+#else
+#define VENUS_Y_STRIDE(args...) 0
+#define VENUS_Y_SCANLINES(args...) 0
+#define VENUS_BUFFER_SIZE(args...) 0
+#endif
+//ANDROID_SINGLETON_STATIC_INSTANCE(qdutils::QCCompositionType);
 
+
+#ifndef ION_ADSP_HEAP_ID
+#define ION_ADSP_HEAP_ID ION_CAMERA_HEAP_ID
+#endif
 using namespace gralloc;
 using namespace qdutils;
+
 
 //Common functions
 static bool canFallback(int usage, bool triedSystem)
@@ -85,27 +92,20 @@ IAllocController* IAllocController::sController = NULL;
 IAllocController* IAllocController::getInstance(bool useMasterHeap)
 {
     if(sController == NULL) {
-#ifdef USE_ION
         sController = new IonController();
-#else
-        if(useMasterHeap)
-            sController = new PmemAshmemController();
-        else
-            sController = new PmemKernelController();
-#endif
     }
     return sController;
 }
 
 
-#ifdef USE_ION
 //-------------- IonController-----------------------//
 IonController::IonController()
 {
     mIonAlloc = new IonAlloc();
 }
 
-int IonController::allocate(alloc_data& data, int usage)
+int IonController::allocate(alloc_data& data, int usage,
+                            int compositionType)
 {
     int ionFlags = 0;
     int ret;
@@ -122,17 +122,33 @@ int IonController::allocate(alloc_data& data, int usage)
         noncontig = true;
     }
 
-    if(usage & GRALLOC_USAGE_PRIVATE_IOMMU_HEAP)
+    if(usage & GRALLOC_USAGE_PRIVATE_IOMMU_HEAP) {
         ionFlags |= ION_HEAP(ION_IOMMU_HEAP_ID);
+        noncontig = true;
+    }
 
     if(usage & GRALLOC_USAGE_PRIVATE_MM_HEAP)
         ionFlags |= ION_HEAP(ION_CP_MM_HEAP_ID);
+
+    if(usage & GRALLOC_USAGE_PRIVATE_WRITEBACK_HEAP)
+        ionFlags |= ION_HEAP(ION_CP_WB_HEAP_ID);
 
     if(usage & GRALLOC_USAGE_PRIVATE_CAMERA_HEAP)
         ionFlags |= ION_HEAP(ION_CAMERA_HEAP_ID);
 
     if(usage & GRALLOC_USAGE_PRIVATE_CP_BUFFER)
         ionFlags |= ION_SECURE;
+
+    if(usage & GRALLOC_USAGE_PRIVATE_ADSP_HEAP)
+        ionFlags |= ION_HEAP(ION_ADSP_HEAP_ID);
+
+    if(usage & GRALLOC_USAGE_PROTECTED && !noncontig)
+        ionFlags |= ION_SECURE;
+
+    if(usage & GRALLOC_USAGE_PRIVATE_DO_NOT_MAP)
+        data.allocType  |=  private_handle_t::PRIV_FLAGS_NOT_MAPPED;
+    else
+        data.allocType  &=  ~(private_handle_t::PRIV_FLAGS_NOT_MAPPED);
 
     // if no flags are set, default to
     // SF + IOMMU heaps, so that bypass can work
@@ -144,7 +160,19 @@ int IonController::allocate(alloc_data& data, int usage)
     data.flags = ionFlags;
     ret = mIonAlloc->alloc_buffer(data);
 
-    // Fallback
+    // Fallback to CAMERA PREVIEW heap if
+    // allocation is for fb1 AND
+    // allocation from SF heap fails
+    // Reason : fb1 had to go to MDP and MDP can't use system heap
+    // TODO : don't hardcode based on 'usage'
+
+    if(ret < 0 && (usage == 6659)) {
+       ALOGW("Falling back to CAMERA_PREVIEW heap for fb allocations");
+       data.flags = ION_HEAP(ION_CAMERA_HEAP_ID);
+       ret = mIonAlloc->alloc_buffer(data);
+    }
+
+    // Fallback to system heap
     if(ret < 0 && canFallback(usage,
                               (ionFlags & ION_SYSTEM_HEAP_ID)))
     {
@@ -176,148 +204,6 @@ IMemAlloc* IonController::getAllocator(int flags)
 
     return memalloc;
 }
-#else
-//-------------- PmemKernelController-----------------------//
-PmemKernelController::PmemKernelController()
-{
-    mPmemAdspAlloc = new PmemKernelAlloc(DEVICE_PMEM_ADSP);
-    // XXX: Right now, there is no need to maintain an instance
-    // of the SMI allocator as we need it only in a few cases
-}
-
-PmemKernelController::~PmemKernelController()
-{
-}
-
-int PmemKernelController::allocate(alloc_data& data, int usage)
-{
-    int ret = 0;
-    bool adspFallback = false;
-    if (!(usage & GRALLOC_USAGE_PRIVATE_SMI_HEAP))
-        adspFallback = true;
-
-    // Try SMI first
-    if ((usage & GRALLOC_USAGE_PRIVATE_SMI_HEAP) ||
-        (usage & GRALLOC_USAGE_EXTERNAL_DISP)    ||
-        (usage & GRALLOC_USAGE_PROTECTED))
-    {
-        int tempFd = open(DEVICE_PMEM_SMIPOOL, O_RDWR, 0);
-        if(tempFd > 0) {
-            close(tempFd);
-            IMemAlloc* memalloc;
-            memalloc = new PmemKernelAlloc(DEVICE_PMEM_SMIPOOL);
-            ret = memalloc->alloc_buffer(data);
-            if(ret >= 0)
-                return ret;
-            else {
-                if(adspFallback)
-                    ALOGW("Allocation from SMI failed, trying ADSP");
-            }
-        }
-    }
-
-    if ((usage & GRALLOC_USAGE_PRIVATE_ADSP_HEAP) || adspFallback) {
-        ret = mPmemAdspAlloc->alloc_buffer(data);
-    }
-    return ret;
-}
-
-IMemAlloc* PmemKernelController::getAllocator(int flags)
-{
-    IMemAlloc* memalloc;
-    if (flags & private_handle_t::PRIV_FLAGS_USES_PMEM_ADSP)
-        memalloc = mPmemAdspAlloc;
-    else {
-        ALOGE("%s: Invalid flags passed: 0x%x", __FUNCTION__, flags);
-        memalloc = NULL;
-    }
-
-    return memalloc;
-}
-
-//-------------- PmemAshmmemController-----------------------//
-
-PmemAshmemController::PmemAshmemController()
-{
-    mPmemUserspaceAlloc = new PmemUserspaceAlloc();
-    mAshmemAlloc = new AshmemAlloc();
-    mPmemKernelCtrl = new PmemKernelController();
-}
-
-PmemAshmemController::~PmemAshmemController()
-{
-}
-
-int PmemAshmemController::allocate(alloc_data& data, int usage)
-{
-    int ret = 0;
-    data.allocType = 0;
-
-    // Make buffers cacheable by default
-    data.uncached = false;
-
-    // Override if we explicitly need uncached buffers
-    if (usage & GRALLOC_USAGE_PRIVATE_UNCACHED)
-        data.uncached = true;
-
-    // If ADSP or SMI is requested use the kernel controller
-    if(usage & (GRALLOC_USAGE_PRIVATE_ADSP_HEAP|
-                GRALLOC_USAGE_PRIVATE_SMI_HEAP)) {
-        ret = mPmemKernelCtrl->allocate(data, usage);
-        if(ret < 0)
-            ALOGE("%s: Failed to allocate ADSP/SMI memory", __func__);
-        else
-            data.allocType = private_handle_t::PRIV_FLAGS_USES_PMEM_ADSP;
-        return ret;
-    }
-
-    if(usage & GRALLOC_USAGE_PRIVATE_SYSTEM_HEAP) {
-        ret = mAshmemAlloc->alloc_buffer(data);
-        if(ret >= 0) {
-            data.allocType = private_handle_t::PRIV_FLAGS_USES_ASHMEM;
-            data.allocType |= private_handle_t::PRIV_FLAGS_NONCONTIGUOUS_MEM;
-        }
-        return ret;
-    }
-
-    // if no memory specific flags are set,
-    // default to EBI heap, so that bypass
-    // can work. We can fall back to system
-    // heap if we run out.
-    ret = mPmemUserspaceAlloc->alloc_buffer(data);
-
-    // Fallback
-    if(ret >= 0 ) {
-        data.allocType = private_handle_t::PRIV_FLAGS_USES_PMEM;
-    } else if(ret < 0 && canFallback(usage, false)) {
-        ALOGW("Falling back to ashmem");
-        ret = mAshmemAlloc->alloc_buffer(data);
-        if(ret >= 0) {
-            data.allocType = private_handle_t::PRIV_FLAGS_USES_ASHMEM;
-            data.allocType |= private_handle_t::PRIV_FLAGS_NONCONTIGUOUS_MEM;
-        }
-    }
-
-    return ret;
-}
-
-IMemAlloc* PmemAshmemController::getAllocator(int flags)
-{
-    IMemAlloc* memalloc;
-    if (flags & private_handle_t::PRIV_FLAGS_USES_PMEM)
-        memalloc = mPmemUserspaceAlloc;
-    else if (flags & private_handle_t::PRIV_FLAGS_USES_PMEM_ADSP)
-        memalloc = mPmemKernelCtrl->getAllocator(flags);
-    else if (flags & private_handle_t::PRIV_FLAGS_USES_ASHMEM)
-        memalloc = mAshmemAlloc;
-    else {
-        ALOGE("%s: Invalid flags passed: 0x%x", __FUNCTION__, flags);
-        memalloc = NULL;
-    }
-
-    return memalloc;
-}
-#endif
 
 size_t getBufferSizeAndDimensions(int width, int height, int format,
                                   int& alignedw, int &alignedh)
@@ -409,15 +295,14 @@ int alloc_buffer(private_handle_t **pHnd, int w, int h, int format, int usage)
     data.uncached = useUncached(usage);
     int allocFlags = usage;
 
-    int err = sAlloc->allocate(data, allocFlags);
+    int err = sAlloc->allocate(data, allocFlags, 0);
     if (0 != err) {
         ALOGE("%s: allocate failed", __FUNCTION__);
         return -ENOMEM;
     }
 
     private_handle_t* hnd = new private_handle_t(data.fd, data.size,
-                                                 data.allocType, 0, format,
-                                                 alignedw, alignedh);
+                                                 data.allocType, 0, format, alignedw, alignedh);
     hnd->base = (int) data.base;
     hnd->offset = data.offset;
     hnd->gpuaddr = 0;

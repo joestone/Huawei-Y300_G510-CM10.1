@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (c) 2011-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012 The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -30,6 +30,8 @@
 
 using namespace gralloc;
 
+#define SZ_1M 0x100000
+
 gpu_context_t::gpu_context_t(const private_module_t* module,
                              IAllocController* alloc_ctrl ) :
     mAllocCtrl(alloc_ctrl)
@@ -43,6 +45,9 @@ gpu_context_t::gpu_context_t(const private_module_t* module,
     common.module  = const_cast<hw_module_t*>(&module->base.common);
     common.close   = gralloc_close;
     alloc          = gralloc_alloc;
+//#if 0
+    allocSize      = gralloc_alloc_size;
+//#endif
     free           = gralloc_free;
 
 }
@@ -52,7 +57,7 @@ int gpu_context_t::gralloc_alloc_framebuffer_locked(size_t size, int usage,
 {
     private_module_t* m = reinterpret_cast<private_module_t*>(common.module);
 
-    // we don't support framebuffer allocations with graphics heap flags
+    // we don't support allocations with both the FB and PMEM_ADSP flags
     if (usage & GRALLOC_HEAP_MASK) {
         return -EINVAL;
     }
@@ -136,31 +141,60 @@ int gpu_context_t::gralloc_alloc_buffer(size_t size, int usage,
     else
         data.align = getpagesize();
     data.pHandle = (unsigned int) pHandle;
-    err = mAllocCtrl->allocate(data, usage);
+    err = mAllocCtrl->allocate(data, usage, 0);
 
-    if (usage & GRALLOC_USAGE_PRIVATE_UNSYNCHRONIZED) {
-        flags |= private_handle_t::PRIV_FLAGS_UNSYNCHRONIZED;
+     if (!err) {
+         /* allocate memory for enhancement data */
+         alloc_data eData;
+         eData.fd = -1;
+         eData.base = 0;
+         eData.offset = 0;
+         eData.size = ROUND_UP_PAGESIZE(sizeof(MetaData_t));
+         eData.pHandle = data.pHandle;
+         eData.align = getpagesize();
+         int eDataUsage = GRALLOC_USAGE_PRIVATE_SYSTEM_HEAP;
+         int eDataErr = mAllocCtrl->allocate(eData, eDataUsage, 0);
+         ALOGE_IF(eDataErr, "gralloc failed for eData err=%s", strerror(-err));
+ 
+         if (usage & GRALLOC_USAGE_PRIVATE_UNSYNCHRONIZED) {
+             flags |= private_handle_t::PRIV_FLAGS_UNSYNCHRONIZED;
+         }
+         if (usage & GRALLOC_USAGE_PRIVATE_EXTERNAL_ONLY) {
+             flags |= private_handle_t::PRIV_FLAGS_EXTERNAL_ONLY;
+             //The EXTERNAL_BLOCK flag is always an add-on
+             if (usage & GRALLOC_USAGE_PRIVATE_EXTERNAL_BLOCK) {
+                 flags |= private_handle_t::PRIV_FLAGS_EXTERNAL_BLOCK;
+             }
+             if (usage & GRALLOC_USAGE_PRIVATE_EXTERNAL_CC) {
+                 flags |= private_handle_t::PRIV_FLAGS_EXTERNAL_CC;
+             }
+         }
+
+         flags |= data.allocType;
+
+         int eBaseAddr = int(eData.base) + eData.offset;
+         private_handle_t *hnd = new private_handle_t(data.fd, size, flags,
+                 bufferType, format, width, height, eData.fd, eData.offset,
+                 eBaseAddr);
+
+/*    if (usage & GRALLOC_USAGE_HW_VIDEO_ENCODER ) {
+        flags |= private_handle_t::PRIV_FLAGS_VIDEO_ENCODER;
     }
 
-    if (usage & GRALLOC_USAGE_PRIVATE_EXTERNAL_ONLY) {
-        flags |= private_handle_t::PRIV_FLAGS_EXTERNAL_ONLY;
-        //The EXTERNAL_BLOCK flag is always an add-on
-        if (usage & GRALLOC_USAGE_PRIVATE_EXTERNAL_BLOCK) {
-            flags |= private_handle_t::PRIV_FLAGS_EXTERNAL_BLOCK;
-        }if (usage & GRALLOC_USAGE_PRIVATE_EXTERNAL_CC) {
-            flags |= private_handle_t::PRIV_FLAGS_EXTERNAL_CC;
-        }
+    if (usage & GRALLOC_USAGE_HW_CAMERA_WRITE) {
+        flags |= private_handle_t::PRIV_FLAGS_CAMERA_WRITE;
     }
 
-    if (err == 0) {
+    if (usage & GRALLOC_USAGE_HW_CAMERA_READ) {
+        flags |= private_handle_t::PRIV_FLAGS_CAMERA_READ;
+    }*/
+
         flags |= data.allocType;
-        private_handle_t* hnd = new private_handle_t(data.fd, size, flags,
-                                                     bufferType, format, width,
-                                                     height);
 
         hnd->offset = data.offset;
         hnd->base = int(data.base) + data.offset;
-        *pHandle = hnd;
+     	hnd->gpuaddr = 0;   
+		*pHandle = hnd;
     }
 
     ALOGE_IF(err, "gralloc failed err=%s", strerror(-err));
@@ -168,22 +202,15 @@ int gpu_context_t::gralloc_alloc_buffer(size_t size, int usage,
 }
 
 void gpu_context_t::getGrallocInformationFromFormat(int inputFormat,
-                                                    int *colorFormat,
                                                     int *bufferType)
 {
     *bufferType = BUFFER_TYPE_VIDEO;
-    *colorFormat = inputFormat;
 
-    // HAL_PIXEL_FORMAT_RGB_888 is MPQ color format for VCAP videos
-    // value of RGB_888 is less than 0x7 and this format is not supported
-    // by the GPU
-    if ((inputFormat < 0x7) && (inputFormat != HAL_PIXEL_FORMAT_RGB_888)) {
+    if (inputFormat < 0x7) {
         // RGB formats
-        *colorFormat = inputFormat;
         *bufferType = BUFFER_TYPE_UI;
     } else if ((inputFormat == HAL_PIXEL_FORMAT_R_8) ||
                (inputFormat == HAL_PIXEL_FORMAT_RG_88)) {
-        *colorFormat = inputFormat;
         *bufferType = BUFFER_TYPE_UI;
     }
 }
@@ -196,13 +223,26 @@ int gpu_context_t::alloc_impl(int w, int h, int format, int usage,
 
     size_t size;
     int alignedw, alignedh;
-    int colorFormat, bufferType;
-    getGrallocInformationFromFormat(format, &colorFormat, &bufferType);
-    size = getBufferSizeAndDimensions(w, h, colorFormat, alignedw, alignedh);
+    int grallocFormat = format;
+    int bufferType;
+
+    //If input format is HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED then based on
+    //the usage bits, gralloc assigns a format.
+    if(format == HAL_PIXEL_FORMAT_IMPLEMENTATION_DEFINED) {
+        if(usage & GRALLOC_USAGE_HW_VIDEO_ENCODER)
+            grallocFormat = HAL_PIXEL_FORMAT_YCbCr_420_SP; //NV12
+        else if(usage & GRALLOC_USAGE_HW_CAMERA_READ)
+            grallocFormat = HAL_PIXEL_FORMAT_YCrCb_420_SP; //NV21
+        else if(usage & GRALLOC_USAGE_HW_CAMERA_WRITE)
+            grallocFormat = HAL_PIXEL_FORMAT_YCrCb_420_SP; //NV21
+    }
+
+    getGrallocInformationFromFormat(grallocFormat, &bufferType);
+    size = getBufferSizeAndDimensions(w, h, grallocFormat, alignedw, alignedh);
 
     if ((ssize_t)size <= 0)
         return -EINVAL;
-    size = (bufferSize != 0)? bufferSize : size;
+    size = (bufferSize >= size)? bufferSize : size;
 
     // All buffers marked as protected or for external
     // display need to go to overlay
@@ -216,7 +256,7 @@ int gpu_context_t::alloc_impl(int w, int h, int format, int usage,
         err = gralloc_alloc_framebuffer(size, usage, pHandle);
     } else {
         err = gralloc_alloc_buffer(size, usage, pHandle, bufferType,
-                                   format, alignedw, alignedh);
+                                   grallocFormat, alignedw, alignedh);
     }
 
     if (err < 0) {
@@ -247,6 +287,13 @@ int gpu_context_t::free_impl(private_handle_t const* hnd) {
         int err = memalloc->free_buffer((void*)hnd->base, (size_t) hnd->size,
                                         hnd->offset, hnd->fd);
         if(err)
+/*            return err;
+        // free the metadata space
+        unsigned long size = ROUND_UP_PAGESIZE(sizeof(MetaData_t));
+        err = memalloc->free_buffer((void*)hnd->base_metadata,
+                                    (size_t) size, hnd->offset_metadata,
+                                    hnd->fd_metadata);
+        if (err)*/
             return err;
     }
 

@@ -1,12 +1,12 @@
 #
-# system.prop for u8951
+# system.prop for G510
 #
 
 # Bluetooth
-ro.bluetooth.remote.autoconnect=true
-ro.bluetooth.request.master=true
-ro.qualcomm.bluetooth.dun=true
-ro.qualcomm.bluetooth.ftp=true
+ro.bt.bdaddr_path=/data/misc/bluedroid/bdaddr
+#system property for Bluetooth discoverability timeout in seconds
+#0: Always discoverable
+debug.bt.discoverable_time=-1
 
 # Camcorder
 debug.camcorder.disablemeta=1
@@ -33,8 +33,8 @@ windowsmgr.max_events_per_sec=150
 debug.enabletr=true
 persist.sys.use_dithering=0
 ro.max.fling_velocity=4000
-debug.gr.numframebuffers=3
 ro.opengles.version=131072
+debug.gr.numframebuffers=3 
 
 #pie-control
 qemu.hw.mainkeys=0
@@ -46,7 +46,7 @@ ro.confg.hw_appversion=G510-CM10.1_KERNEL
 
 # Media
 media.stagefright.enable-player=true
-media.stagefright.enable-meta=true
+media.stagefright.enable-meta=false
 media.stagefright.enable-scan=true
 media.stagefright.enable-http=true
 media.stagefright.enable-fma2dp=true
@@ -72,7 +72,7 @@ ro.vendor.extension_library=/system/lib/libqc-opt.so
 ro.hw_plat=7x27A
 
 ########################################        Telephony
-rild.libpath=/system/lib/libril-qc-1.so
+rild.libpath=/system/lib/libril-qc-qmi-1.so
 rild.libargs=-d /dev/smd0
 persist.rild.nitz_plmn=
 persist.rild.nitz_long_ons_0=
@@ -89,6 +89,7 @@ ro.telephony.call_ring.multiple=false
 ro.telephony.ril_class=HuaweiRIL2
 ro.telephony.ril.v3=qcomdsds
 ro.use_data_netmgrd=true
+gsm.version.baseband=2030
 # system prop for multi rild (DSDS case)
 #
 ro.multi.rild=false
@@ -131,31 +132,6 @@ wifi.interface=eth0
 #wifi.supplicant_scan_interval=60
 wlan.driver.status=ok
 
-#BT
-#
-# system prop for requesting Master role in incoming Bluetooth connection.
-#
-ro.bluetooth.request.master=true
-
-#
-# system prop for Bluetooth FTP profile
-#
-ro.qualcomm.bluetooth.ftp=true
-
-#
-# system prop for Bluetooth SAP profile
-#
-ro.qualcomm.bluetooth.sap=true
-
-#
-# system prop for Bluetooth Auto connect for remote initated connections
-#
-ro.bluetooth.remote.autoconnect=true
-
-#
-#system property for Bluetooth discoverability timeout in seconds
-#0: Always discoverable
-debug.bt.discoverable_time=-1
 
 
 #TCP Fin Aggregation

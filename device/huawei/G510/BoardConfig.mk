@@ -51,7 +51,7 @@ BOARD_USES_QCOM_HARDWARE := true
 COMMON_GLOBAL_CFLAGS += -DQCOM_HARDWARE
 
 # Kernel 
-TARGET_KERNEL_SOURCE := kernel/huawei/g510/cmtestkernel
+TARGET_KERNEL_SOURCE := kernel/huawei/g510/cmkernel
 TARGET_KERNEL_CONFIG := g510_jb2_defconfig
 TARGET_BOOTLOADER_BOARD_NAME := G510
 BOARD_KERNEL_CMDLINE := androidboot.hardware=huawei
@@ -64,18 +64,14 @@ TARGET_SPECIFIC_HEADER_PATH := device/huawei/daytona-common/include
 # Graphics
 BOARD_EGL_CFG := device/huawei/daytona-common/prebuilt/system/lib/egl/egl.cfg
 USE_OPENGL_RENDERER := true
-TARGET_USES_OVERLAY := true
 TARGET_USES_ION := true
 TARGET_QCOM_DISPLAY_VARIANT := legacy
 TARGET_QCOM_MEDIA_VARIANT := caf
-COMMON_GLOBAL_CFLAGS += -DREFRESH_RATE=65
 BOARD_ADRENO_DECIDE_TEXTURE_TARGET := true
-#TARGET_USES_QCOM_BSP := true
-
 BOARD_WANTS_EMMC_BOOT := true
-
+TARGET_USES_QCOM_BSP := true
 # Video
-COMMON_GLOBAL_CFLAGS += -DQCOM_NO_SECURE_PLAYBACK 
+COMMON_GLOBAL_CFLAGS += -DQCOM_BSP
 
 # Qualcomm hardware
 BOARD_USES_QCOM_HARDWARE := true
@@ -91,14 +87,10 @@ BOARD_HOSTAPD_PRIVATE_LIB        := lib_driver_cmd_ath6kl
 WPA_SUPPLICANT_VERSION           := VER_0_8_X
 WIFI_DRIVER_MODULE_PATH          := "/data/misc/wifi/load/ar6000.ko"
 WIFI_DRIVER_MODULE_NAME          := "ar6000"
-#WIFI_EXT_MODULE_PATH             := "/system/lib/modules/cfg80211.ko"
-#WIFI_EXT_MODULE_NAME             := "cfg80211"
 WIFI_TEST_INTERFACE              := "sta"
 WIFI_DRIVER_FW_PATH_STA          := "sta"
 WIFI_DRIVER_FW_PATH_AP           := "ap"
 WIFI_DRIVER_FW_PATH_P2P          := "p2p"
-#BOARD_WLAN_ATHEROS_SDK			:= hardware/AR6kSDK.3.1/AR6kSDK.build_3.1_RC.734
-#BOARD_WLAN_CHIP_AR6003			:= true
 BOARD_HAVE_HUAWEI_AR6k := true
 PRODUCT_WIRELESS_TOOLS := true
 
@@ -112,20 +104,15 @@ TARGET_PROVIDES_LIBLIGHT := true
 BOARD_RIL_CLASS := ../../../device/huawei/daytona-common/ril/
 
 # Bluetooth
-#BOARD_HAVE_BLUETOOTH_BLUEZ := true
 BOARD_HAVE_BLUETOOTH := true
-#BOARD_HAVE_BLUETOOTH_QCOM := true
-#BLUETOOTH_HCI_USE_MCT := true
-#BOARD_HAVE_BLUETOOTH_HCI = true
-#BLUETOOTH_HCIATTACH_USING_PROPERTY = true
 BOARD_BLUETOOTH_BDROID_BUILDCFG_INCLUDE_DIR := device/huawei/G510/bluetooth
-BOARD_BLUEDROID_VENDOR_CONF := device/huawei/G510/bluetooth/vnd_g510.txt
+
 # Camera
 USE_CAMERA_STUB := false
-BOARD_NEEDS_MEMORYHEAPPMEM := true
+BOARD_USES_QCOM_LEGACY_CAM_PARAMS :=true
+
 
 # Dalvik
-#TARGET_ARCH_LOWMEM := true
 WITH_JIT := true
 ENABLE_JSC_JIT := true
 JS_ENGINE := v8

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,6 +84,24 @@ static int gralloc_map(gralloc_module_t const* module,
         hnd->base = intptr_t(mappedAddress) + hnd->offset;
         //LOGD("gralloc_map() succeeded fd=%d, off=%d, size=%d, vaddr=%p",
         //        hnd->fd, hnd->offset, hnd->size, mappedAddress);
+        mappedAddress = MAP_FAILED;
+        size = ROUND_UP_PAGESIZE(sizeof(MetaData_t));
+        err = memalloc->map_buffer(&mappedAddress, size,
+                                       hnd->offset_metadata, hnd->fd_metadata);
+        if(err) {
+            ALOGE("Could not mmap handle %p, fd=%d (%s)",
+                  handle, hnd->fd_metadata, strerror(errno));
+            hnd->base_metadata = 0;
+            return -errno;
+        }
+
+        if (mappedAddress == MAP_FAILED) {
+            ALOGE("Could not mmap handle %p, fd=%d (%s)",
+                  handle, hnd->fd_metadata, strerror(errno));
+            hnd->base_metadata = 0;
+            return -errno;
+        }
+        hnd->base_metadata = intptr_t(mappedAddress) + hnd->offset_metadata;
     }
     *vaddr = (void*)hnd->base;
     return 0;
@@ -98,13 +116,21 @@ static int gralloc_unmap(gralloc_module_t const* module,
         void* base = (void*)hnd->base;
         size_t size = hnd->size;
         IMemAlloc* memalloc = getAllocator(hnd->flags) ;
-        if(memalloc != NULL)
+        if(memalloc != NULL) {
             err = memalloc->unmap_buffer(base, size, hnd->offset);
-        if (err) {
-            ALOGE("Could not unmap memory at address %p", base);
+            if (err) {
+                ALOGE("Could not unmap memory at address %p", base);
+            }
+            base = (void*)hnd->base_metadata;
+            size = ROUND_UP_PAGESIZE(sizeof(MetaData_t));
+            err = memalloc->unmap_buffer(base, size, hnd->offset_metadata);
+            if (err) {
+                ALOGE("Could not unmap memory at address %p", base);
+            }
         }
     }
     hnd->base = 0;
+	hnd->base_metadata = 0;
     return 0;
 }
 
@@ -133,6 +159,7 @@ int gralloc_register_buffer(gralloc_module_t const* module,
     private_handle_t* hnd = (private_handle_t*)handle;
     if (hnd->pid != getpid()) {
         hnd->base = 0;
+	    hnd->base_metadata = 0;
         void *vaddr;
         int err = gralloc_map(module, handle, &vaddr);
         if (err) {
@@ -182,6 +209,7 @@ int gralloc_unregister_buffer(gralloc_module_t const* module,
             gralloc_unmap(module, handle);
         }
         hnd->base = 0;
+		hnd->base_metadata = 0;
         // Release the genlock
         if (-1 != hnd->genlockHandle) {
             return genlock_release_lock((native_handle_t *)handle);
@@ -264,11 +292,18 @@ int gralloc_lock(gralloc_module_t const* module,
             hnd->flags |= private_handle_t::PRIV_FLAGS_SW_LOCK;
         }
 
+        //Invalidate if reading in software. No need to do this for the metadata
+        //buffer as it is only read/written in software.
+        IMemAlloc* memalloc = getAllocator(hnd->flags) ;
+        err = memalloc->clean_buffer((void*)hnd->base,
+                                     hnd->size, hnd->offset, hnd->fd);
         if ((usage & GRALLOC_USAGE_SW_WRITE_MASK) &&
             !(hnd->flags & private_handle_t::PRIV_FLAGS_FRAMEBUFFER)) {
             // Mark the buffer to be flushed after cpu read/write
             hnd->flags |= private_handle_t::PRIV_FLAGS_NEEDS_FLUSH;
         }
+    } else {
+        hnd->flags |= private_handle_t::PRIV_FLAGS_DO_NOT_FLUSH;
     }
     return err;
 }
@@ -278,16 +313,21 @@ int gralloc_unlock(gralloc_module_t const* module,
 {
     if (private_handle_t::validate(handle) < 0)
         return -EINVAL;
-
+    int err = 0;
     private_handle_t* hnd = (private_handle_t*)handle;
+    IMemAlloc* memalloc = getAllocator(hnd->flags);
 
     if (hnd->flags & private_handle_t::PRIV_FLAGS_NEEDS_FLUSH) {
-        int err;
-        IMemAlloc* memalloc = getAllocator(hnd->flags) ;
         err = memalloc->clean_buffer((void*)hnd->base,
                                      hnd->size, hnd->offset, hnd->fd);
         ALOGE_IF(err < 0, "cannot flush handle %p (offs=%x len=%x, flags = 0x%x) err=%s\n",
                  hnd, hnd->offset, hnd->size, hnd->flags, strerror(errno));
+        unsigned long size = ROUND_UP_PAGESIZE(sizeof(MetaData_t));
+        err = memalloc->clean_buffer((void*)hnd->base_metadata, size,
+                hnd->offset_metadata, hnd->fd_metadata);
+        ALOGE_IF(err < 0, "cannot flush handle %p (offs=%x len=%lu, "
+                "flags = 0x%x) err=%s\n", hnd, hnd->offset_metadata, size,
+                hnd->flags, strerror(errno));
         hnd->flags &= ~private_handle_t::PRIV_FLAGS_NEEDS_FLUSH;
     }
 
@@ -327,12 +367,7 @@ int gralloc_perform(struct gralloc_module_t const* module,
                     private_handle_t::sNumFds, private_handle_t::sNumInts);
                 hnd->magic = private_handle_t::sMagic;
                 hnd->fd = fd;
-#ifdef USE_ION
                 hnd->flags =  private_handle_t::PRIV_FLAGS_USES_ION;
-#else
-                hnd->flags = private_handle_t::PRIV_FLAGS_USES_PMEM |
-                             private_handle_t::PRIV_FLAGS_DO_NOT_FLUSH;
-#endif
                 hnd->size = size;
                 hnd->offset = offset;
                 hnd->base = intptr_t(base) + offset;

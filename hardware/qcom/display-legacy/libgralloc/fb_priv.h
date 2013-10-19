@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2012, The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 #ifndef FB_PRIV_H
 #define FB_PRIV_H
 #include <linux/fb.h>
+#include <linux/msm_mdp.h>
 
 #define NUM_FRAMEBUFFERS_MIN  2
 #define NUM_FRAMEBUFFERS_MAX  3

@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -10,7 +10,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Code Aurora Forum, Inc. nor the names of its
+ *   * Neither the name of The Linux Foundation nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -41,7 +41,8 @@ class IAllocController {
     /* Allocate using a suitable method
      * Returns the type of buffer allocated
      */
-    virtual int allocate(alloc_data& data, int usage) = 0;
+    virtual int allocate(alloc_data& data, int usage,
+                         int compositionType) = 0;
 
     virtual IMemAlloc* getAllocator(int flags) = 0;
 
@@ -54,11 +55,11 @@ class IAllocController {
 
 };
 
-#ifdef USE_ION
 class IonController : public IAllocController {
 
     public:
-    virtual int allocate(alloc_data& data, int usage);
+    virtual int allocate(alloc_data& data, int usage,
+                         int compositionType);
 
     virtual IMemAlloc* getAllocator(int flags);
 
@@ -68,43 +69,5 @@ class IonController : public IAllocController {
     IonAlloc* mIonAlloc;
 
 };
-#else
-class PmemKernelController : public IAllocController {
-
-    public:
-    virtual int allocate(alloc_data& data, int usage);
-
-    virtual IMemAlloc* getAllocator(int flags);
-
-    PmemKernelController ();
-
-    ~PmemKernelController ();
-
-    private:
-    IMemAlloc* mPmemAdspAlloc;
-
-};
-
-// Main pmem controller - this should only
-// be used within gralloc
-class PmemAshmemController : public IAllocController {
-
-    public:
-    virtual int allocate(alloc_data& data, int usage);
-
-    virtual IMemAlloc* getAllocator(int flags);
-
-    PmemAshmemController();
-
-    ~PmemAshmemController();
-
-    private:
-    IMemAlloc* mPmemUserspaceAlloc;
-    IMemAlloc* mAshmemAlloc;
-    IAllocController* mPmemKernelCtrl;
-
-};
-#endif
-
 } //end namespace gralloc
 #endif // GRALLOC_ALLOCCONTROLLER_H

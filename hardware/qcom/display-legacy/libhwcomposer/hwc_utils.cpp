@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2012, The Linux Foundation All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,21 +15,17 @@
  * limitations under the License.
  */
 
+#include <sys/ioctl.h>
 #include <EGL/egl.h>
-#include <overlay.h>
 #include <cutils/properties.h>
 #include <gralloc_priv.h>
 #include <fb_priv.h>
+#include <overlay.h>
 #include "hwc_utils.h"
-#include "mdp_version.h"
-#include "hwc_video.h"
-#include "hwc_pip.h"
-#include "hwc_qbuf.h"
-#include "hwc_copybit.h"
-#include "hwc_external.h"
 #include "hwc_mdpcomp.h"
-#include "hwc_extonly.h"
-#include "hwc_service.h"
+#include "mdp_version.h"
+#include "external.h"
+#include "QService.h"
 
 namespace qhwc {
 
@@ -39,44 +35,42 @@ static void openFramebufferDevice(hwc_context_t *ctx)
     hw_module_t const *module;
     if (hw_get_module(GRALLOC_HARDWARE_MODULE_ID, &module) == 0) {
         framebuffer_open(module, &(ctx->mFbDev));
+        private_module_t* m = reinterpret_cast<private_module_t*>(
+                ctx->mFbDev->common.module);
+        //xres, yres may not be 32 aligned
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].stride = m->finfo.line_length /
+                                                (m->info.xres/8);
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].xres = m->info.xres;
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].yres = m->info.yres;
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].xdpi = ctx->mFbDev->xdpi;
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].ydpi = ctx->mFbDev->ydpi;
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].vsync_period =
+                1000000000l / ctx->mFbDev->fps;
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].fd = openFb(HWC_DISPLAY_PRIMARY);
     }
 }
 
 void initContext(hwc_context_t *ctx)
 {
     openFramebufferDevice(ctx);
+    overlay::Overlay::initOverlay();
     ctx->mOverlay = overlay::Overlay::getInstance();
-    ctx->mHwcService = hwcService::HWComposerService::getInstance();
-    ctx->mHwcService->setHwcContext(ctx);
-    ctx->qbuf = new QueuedBufferStore();
+    ctx->mQService = qService::QService::getInstance(ctx);
     ctx->mMDP.version = qdutils::MDPVersion::getInstance().getMDPVersion();
     ctx->mMDP.hasOverlay = qdutils::MDPVersion::getInstance().hasOverlay();
     ctx->mMDP.panel = qdutils::MDPVersion::getInstance().getPanelType();
-    ctx->mCopybitEngine = CopybitEngine::getInstance();
     ctx->mExtDisplay = new ExternalDisplay(ctx);
-    memset(ctx->dpys,(int)EGL_NO_DISPLAY, MAX_NUM_DISPLAYS);
+    for (uint32_t i = 0; i < HWC_NUM_DISPLAY_TYPES; i++)
+        ctx->mLayerCache[i] = new LayerCache();
     MDPComp::init(ctx);
-
-    char value[PROPERTY_VALUE_MAX];
-    property_get("debug.egl.swapinterval", value, "1");
-    ctx->swapInterval = atoi(value);
-
-    //Initialize dyn threshold to 2.0
-    //system property can override this value
-    ctx->dynThreshold = 2.0;
-
-    property_get("debug.hwc.dynThreshold", value, "2");
-    ctx->dynThreshold = atof(value);
 
     pthread_mutex_init(&(ctx->vstate.lock), NULL);
     pthread_cond_init(&(ctx->vstate.cond), NULL);
     ctx->vstate.enable = false;
-
-    ctx->hdmi_pending = false;
+    ctx->isHPDEnabled = false;
 
     ALOGI("Initializing Qualcomm Hardware Composer");
     ALOGI("MDP version: %d", ctx->mMDP.version);
-    ALOGI("DYN composition threshold : %f", ctx->dynThreshold);
 }
 
 void closeContext(hwc_context_t *ctx)
@@ -86,19 +80,11 @@ void closeContext(hwc_context_t *ctx)
         ctx->mOverlay = NULL;
     }
 
-    if(ctx->mCopybitEngine) {
-        delete ctx->mCopybitEngine;
-        ctx->mCopybitEngine = NULL;
-    }
-
     if(ctx->mFbDev) {
         framebuffer_close(ctx->mFbDev);
         ctx->mFbDev = NULL;
-    }
-
-    if(ctx->qbuf) {
-        delete ctx->qbuf;
-        ctx->qbuf = NULL;
+        close(ctx->dpyAttr[HWC_DISPLAY_PRIMARY].fd);
+        ctx->dpyAttr[HWC_DISPLAY_PRIMARY].fd = -1;
     }
 
     if(ctx->mExtDisplay) {
@@ -106,177 +92,260 @@ void closeContext(hwc_context_t *ctx)
         ctx->mExtDisplay = NULL;
     }
 
+    ctx->isHPDEnabled = false;
+
     pthread_mutex_destroy(&(ctx->vstate.lock));
     pthread_cond_destroy(&(ctx->vstate.cond));
 }
 
-void dumpLayer(hwc_layer_1_t const* l)
+
+void dumpsys_log(android::String8& buf, const char* fmt, ...)
 {
-    ALOGD("\ttype=%d, flags=%08x, handle=%p, tr=%02x, blend=%04x, {%d,%d,%d,%d}"
-          ", {%d,%d,%d,%d}",
-          l->compositionType, l->flags, l->handle, l->transform, l->blending,
-          l->sourceCrop.left,
-          l->sourceCrop.top,
-          l->sourceCrop.right,
-          l->sourceCrop.bottom,
-          l->displayFrame.left,
-          l->displayFrame.top,
-          l->displayFrame.right,
-          l->displayFrame.bottom);
+    va_list varargs;
+    va_start(varargs, fmt);
+    buf.appendFormatV(fmt, varargs);
+    va_end(varargs);
 }
 
-void getLayerStats(hwc_context_t *ctx, const hwc_display_contents_1_t *list)
-{
-    //Video specific stats
-    int yuvCount = 0;
-    int yuvLayerIndex = -1;
-    int pipLayerIndex = -1; //2nd video in pip scenario
-    bool isYuvLayerSkip = false;
-    int skipCount = 0;
-    int ccLayerIndex = -1; //closed caption
-    int extLayerIndex = -1; //ext-only or block except closed caption
-    int extCount = 0; //ext-only except closed caption
-    bool isExtBlockPresent = false; //is BLOCK layer present
-    bool yuvSecure = false;
+static inline bool isAlphaScaled(hwc_layer_1_t const* layer) {
+    int dst_w, dst_h, src_w, src_h;
+
+    hwc_rect_t displayFrame  = layer->displayFrame;
+    hwc_rect_t sourceCrop = layer->sourceCrop;
+
+    dst_w = displayFrame.right - displayFrame.left;
+    dst_h = displayFrame.bottom - displayFrame.top;
+
+    src_w = sourceCrop.right - sourceCrop.left;
+    src_h = sourceCrop.bottom - sourceCrop.top;
+
+    if(((src_w != dst_w) || (src_h != dst_h))) {
+        if(layer->blending != HWC_BLENDING_NONE)
+            return true;
+    }
+    return false;
+}
+
+void setListStats(hwc_context_t *ctx,
+        const hwc_display_contents_1_t *list, int dpy) {
+
+    ctx->listStats[dpy].numAppLayers = list->numHwLayers - 1;
+    ctx->listStats[dpy].fbLayerIndex = list->numHwLayers - 1;
+    ctx->listStats[dpy].yuvCount = 0;
+    ctx->listStats[dpy].yuvIndex = -1;
+    ctx->listStats[dpy].skipCount = 0;
+    ctx->listStats[dpy].needsAlphaScale = false;
 
     for (size_t i = 0; i < list->numHwLayers; i++) {
-        private_handle_t *hnd =
-            (private_handle_t *)list->hwLayers[i].handle;
+        hwc_layer_1_t const* layer = &list->hwLayers[i];
+        private_handle_t *hnd = (private_handle_t *)layer->handle;
+
+        if(list->hwLayers[i].compositionType == HWC_FRAMEBUFFER_TARGET) {
+            continue;
+        //We disregard FB being skip for now! so the else if
+        } else if (isSkipLayer(&list->hwLayers[i])) {
+            ctx->listStats[dpy].skipCount++;
+        }
+
+        if(!ctx->listStats[dpy].needsAlphaScale)
+            ctx->listStats[dpy].needsAlphaScale = isAlphaScaled(layer);
 
         if (UNLIKELY(isYuvBuffer(hnd))) {
-            yuvCount++;
-            if(yuvCount==1) {
-                //Set the primary video to the video layer in
-                //lower z-order
-                yuvLayerIndex = i;
-            }
-            if(yuvCount == 2) {
-                //In case of two videos, set the pipLayerIndex to the
-                //second video
-                pipLayerIndex = i;
-            }
-            yuvSecure = isSecureBuffer(hnd);
-            //Animating
-            //Do not mark as SKIP if it is secure buffer
-            if (isSkipLayer(&list->hwLayers[i]) && !yuvSecure) {
-                isYuvLayerSkip = true;
-            }
-        } else if(UNLIKELY(isExtCC(hnd))) {
-            ccLayerIndex = i;
-        } else if(UNLIKELY(isExtBlock(hnd))) {
-            extCount++;
-            extLayerIndex = i;
-            isExtBlockPresent = true;
-        } else if(UNLIKELY(isExtOnly(hnd))) {
-            extCount++;
-            //If BLOCK layer present, dont cache index, display BLOCK only.
-            if(isExtBlockPresent == false) extLayerIndex = i;
-        } else if (isSkipLayer(&list->hwLayers[i])) { //Popups
-            skipCount++;
-        }
-        // check if video layer is below skip layer
-        if((isSkipLayer(&list->hwLayers[i]))) {
-            if((yuvLayerIndex >= 0) && ((unsigned int)yuvLayerIndex<i)) {
-               isYuvLayerSkip = true;
-            }
+            ctx->listStats[dpy].yuvCount++;
+            ctx->listStats[dpy].yuvIndex = i;
         }
     }
-
-    VideoOverlay::setStats(yuvCount, yuvLayerIndex, isYuvLayerSkip,
-            ccLayerIndex);
-    VideoPIP::setStats(yuvCount, yuvLayerIndex, isYuvLayerSkip,
-            pipLayerIndex);
-    ExtOnly::setStats(extCount, extLayerIndex, isExtBlockPresent);
-    CopyBit::setStats(skipCount);
-    MDPComp::setStats(skipCount);
-
-    ctx->numHwLayers = list->numHwLayers;
-    return;
 }
+
+
+static inline void calc_cut(float& leftCutRatio, float& topCutRatio,
+        float& rightCutRatio, float& bottomCutRatio, int orient) {
+    if(orient & HAL_TRANSFORM_FLIP_H) {
+        swap(leftCutRatio, rightCutRatio);
+    }
+    if(orient & HAL_TRANSFORM_FLIP_V) {
+        swap(topCutRatio, bottomCutRatio);
+    }
+    if(orient & HAL_TRANSFORM_ROT_90) {
+        //Anti clock swapping
+        float tmpCutRatio = leftCutRatio;
+        leftCutRatio = topCutRatio;
+        topCutRatio = rightCutRatio;
+        rightCutRatio = bottomCutRatio;
+        bottomCutRatio = tmpCutRatio;
+    }
+}
+
+bool isSecuring(hwc_context_t* ctx) {
+    if((ctx->mMDP.version < qdutils::MDSS_V5) &&
+       (ctx->mMDP.version > qdutils::MDP_V3_0) &&
+        ctx->mSecuring) {
+        return true;
+    }
+    return false;
+}
+
 
 //Crops source buffer against destination and FB boundaries
 void calculate_crop_rects(hwc_rect_t& crop, hwc_rect_t& dst,
-        const int fbWidth, const int fbHeight) {
-
-    int& crop_x = crop.left;
-    int& crop_y = crop.top;
+        const int fbWidth, const int fbHeight, int orient) {
+    int& crop_l = crop.left;
+    int& crop_t = crop.top;
     int& crop_r = crop.right;
     int& crop_b = crop.bottom;
     int crop_w = crop.right - crop.left;
     int crop_h = crop.bottom - crop.top;
 
-    int& dst_x = dst.left;
-    int& dst_y = dst.top;
+    int& dst_l = dst.left;
+    int& dst_t = dst.top;
     int& dst_r = dst.right;
     int& dst_b = dst.bottom;
-    int dst_w = dst.right - dst.left;
-    int dst_h = dst.bottom - dst.top;
+    int dst_w = abs(dst.right - dst.left);
+    int dst_h = abs(dst.bottom - dst.top);
 
-    if(dst_x < 0) {
-        float scale_x =  crop_w * 1.0f / dst_w;
-        float diff_factor = (scale_x * abs(dst_x));
-        crop_x = crop_x + (int)diff_factor;
-        crop_w = crop_r - crop_x;
+    float leftCutRatio = 0.0f, rightCutRatio = 0.0f, topCutRatio = 0.0f,
+            bottomCutRatio = 0.0f;
 
-        dst_x = 0;
-        dst_w = dst_r - dst_x;;
+    if(dst_l < 0) {
+        leftCutRatio = (float)(0.0f - dst_l) / (float)dst_w;
+        dst_l = 0;
     }
     if(dst_r > fbWidth) {
-        float scale_x = crop_w * 1.0f / dst_w;
-        float diff_factor = scale_x * (dst_r - fbWidth);
-        crop_r = crop_r - diff_factor;
-        crop_w = crop_r - crop_x;
-
+        rightCutRatio = (float)(dst_r - fbWidth) / (float)dst_w;
         dst_r = fbWidth;
-        dst_w = dst_r - dst_x;
     }
-    if(dst_y < 0) {
-        float scale_y = crop_h * 1.0f / dst_h;
-        float diff_factor = scale_y * abs(dst_y);
-        crop_y = crop_y + diff_factor;
-        crop_h = crop_b - crop_y;
-
-        dst_y = 0;
-        dst_h = dst_b - dst_y;
+    if(dst_t < 0) {
+        topCutRatio = (float)(0 - dst_t) / (float)dst_h;
+        dst_t = 0;
     }
     if(dst_b > fbHeight) {
-        float scale_y = crop_h * 1.0f / dst_h;
-        float diff_factor = scale_y * (dst_b - fbHeight);
-        crop_b = crop_b - diff_factor;
-        crop_h = crop_b - crop_y;
-
+        bottomCutRatio = (float)(dst_b - fbHeight) / (float)dst_h;
         dst_b = fbHeight;
-        dst_h = dst_b - dst_y;
     }
+
+    calc_cut(leftCutRatio, topCutRatio, rightCutRatio, bottomCutRatio, orient);
+    crop_l += crop_w * leftCutRatio;
+    crop_t += crop_h * topCutRatio;
+    crop_r -= crop_w * rightCutRatio;
+    crop_b -= crop_h * bottomCutRatio;
 }
 
-void wait4fbPost(hwc_context_t* ctx) {
-    framebuffer_device_t *fbDev = ctx->mFbDev;
-    if(fbDev) {
-        private_module_t* m = reinterpret_cast<private_module_t*>(
-                              fbDev->common.module);
-        //wait for the fb_post to be called
-        pthread_mutex_lock(&m->fbPostLock);
-        while(m->fbPostDone == false) {
-            pthread_cond_wait(&(m->fbPostCond), &(m->fbPostLock));
-        }
-        m->fbPostDone = false;
-        pthread_mutex_unlock(&m->fbPostLock);
-    }
+bool isExternalActive(hwc_context_t* ctx) {
+    return ctx->dpyAttr[HWC_DISPLAY_EXTERNAL].isActive;
 }
 
-void wait4Pan(hwc_context_t* ctx) {
-    framebuffer_device_t *fbDev = ctx->mFbDev;
-    if(fbDev) {
-        private_module_t* m = reinterpret_cast<private_module_t*>(
-                              fbDev->common.module);
-        //wait for the fb_post's PAN to finish
-        pthread_mutex_lock(&m->fbPanLock);
-        while(m->fbPanDone == false) {
-            pthread_cond_wait(&(m->fbPanCond), &(m->fbPanLock));
+int hwc_sync(hwc_context_t *ctx, hwc_display_contents_1_t* list, int dpy) {
+    int ret = 0;
+#ifdef USE_FENCE_SYNC
+    struct mdp_buf_sync data;
+    int acquireFd[MAX_NUM_LAYERS];
+    int count = 0;
+    int releaseFd = -1;
+    int fbFd = -1;
+    data.flags = MDP_BUF_SYNC_FLAG_WAIT;
+    data.acq_fen_fd = acquireFd;
+    data.rel_fen_fd = &releaseFd;
+    //Accumulate acquireFenceFds
+    for(uint32_t i = 0; i < list->numHwLayers; i++) {
+        if((list->hwLayers[i].compositionType == HWC_OVERLAY ||
+            list->hwLayers[i].compositionType == HWC_FRAMEBUFFER_TARGET) &&
+            list->hwLayers[i].acquireFenceFd != -1 ){
+            acquireFd[count++] = list->hwLayers[i].acquireFenceFd;
         }
-        m->fbPanDone = false;
-        pthread_mutex_unlock(&m->fbPanLock);
     }
+
+    data.acq_fen_fd_cnt = count;
+    fbFd = ctx->dpyAttr[dpy].fd;
+
+    //Waits for acquire fences, returns a release fence
+    ret = ioctl(fbFd, MSMFB_BUFFER_SYNC, &data);
+    if(ret < 0) {
+        ALOGE("ioctl MSMFB_BUFFER_SYNC failed, err=%s",
+                strerror(errno));
+    }
+
+    for(uint32_t i = 0; i < list->numHwLayers; i++) {
+        if((list->hwLayers[i].compositionType == HWC_OVERLAY ||
+            list->hwLayers[i].compositionType == HWC_FRAMEBUFFER_TARGET)) {
+            //Close the acquireFenceFds
+            if(list->hwLayers[i].acquireFenceFd > 0) {
+                close(list->hwLayers[i].acquireFenceFd);
+                list->hwLayers[i].acquireFenceFd = -1;
+            }
+            //Populate releaseFenceFds.
+            list->hwLayers[i].releaseFenceFd = dup(releaseFd);
+        }
+    }
+    list->retireFenceFd = releaseFd;
+#endif
+    return ret;
 }
+
+void LayerCache::resetLayerCache(int num) {
+    for(uint32_t i = 0; i < MAX_NUM_LAYERS; i++) {
+        hnd[i] = NULL;
+    }
+    numHwLayers = num;
+}
+
+void LayerCache::updateLayerCache(hwc_display_contents_1_t* list) {
+
+    int numFbLayers = 0;
+    int numCacheableLayers = 0;
+
+    canUseLayerCache = false;
+    //Bail if geometry changed or num of layers changed
+    if(list->flags & HWC_GEOMETRY_CHANGED ||
+       list->numHwLayers != numHwLayers ) {
+        resetLayerCache(list->numHwLayers);
+        return;
+    }
+
+    for(uint32_t i = 0; i < list->numHwLayers; i++) {
+        //Bail on skip layers
+        if(list->hwLayers[i].flags & HWC_SKIP_LAYER) {
+            resetLayerCache(list->numHwLayers);
+            return;
+        }
+
+        if(list->hwLayers[i].compositionType == HWC_FRAMEBUFFER) {
+            numFbLayers++;
+            if(hnd[i] == NULL) {
+                hnd[i] = list->hwLayers[i].handle;
+            } else if (hnd[i] ==
+                       list->hwLayers[i].handle) {
+                numCacheableLayers++;
+            } else {
+                hnd[i] = NULL;
+                return;
+            }
+        } else {
+            hnd[i] = NULL;
+        }
+    }
+    if(numFbLayers == numCacheableLayers)
+        canUseLayerCache = true;
+
+    //XXX: The marking part is separate, if MDP comp wants
+    // to use it in the future. Right now getting MDP comp
+    // to use this is more trouble than it is worth.
+    markCachedLayersAsOverlay(list);
+}
+
+void LayerCache::markCachedLayersAsOverlay(hwc_display_contents_1_t* list) {
+    //This optimization only works if ALL the layer handles
+    //that were on the framebuffer didn't change.
+    if(canUseLayerCache){
+        for(uint32_t i = 0; i < list->numHwLayers; i++) {
+            if (list->hwLayers[i].handle &&
+                list->hwLayers[i].handle == hnd[i] &&
+                list->hwLayers[i].compositionType != HWC_FRAMEBUFFER_TARGET)
+            {
+                list->hwLayers[i].compositionType = HWC_OVERLAY;
+            }
+        }
+    }
+
+}
+
 };//namespace

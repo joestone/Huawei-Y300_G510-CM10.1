@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2010 The Android Open Source Project
- * Copyright (C) 2012, Code Aurora Forum. All rights reserved.
+ * Copyright (C) 2012, The Linux Foundation. All rights reserved.
  *
  * Not a Contribution, Apache license notifications and license are retained
  * for attribution purposes only.
@@ -30,6 +30,11 @@
 #define UNLIKELY( exp )     (__builtin_expect( (exp) != 0, false ))
 
 namespace qhwc {
+//Feature for using Copybit to display RGB layers.
+typedef EGLClientBuffer (*functype_eglGetRenderBufferANDROID) (
+                                              EGLDisplay dpy,
+                                              EGLSurface draw);
+typedef EGLSurface (*functype_eglGetCurrentSurface)(EGLint readdraw);
 
 class CopyBit {
 public:
@@ -39,28 +44,42 @@ public:
     static bool draw(hwc_context_t *ctx, hwc_display_contents_1_t *list, EGLDisplay dpy,
                                                                 EGLSurface sur);
     //Receives data from hwc
-    static void setStats(int skipCount);
+    static void setStats(int yuvCount, int yuvLayerIndex, bool isYuvLayerSkip);
 
     static void updateEglHandles(void*);
     static int  drawLayerUsingCopybit(hwc_context_t *dev, hwc_layer_1_t *layer,
-                                          EGLDisplay dpy, EGLSurface surface,
-                                       android_native_buffer_t *renderBuffer);
+                                        EGLDisplay dpy, EGLSurface surface,
+        functype_eglGetRenderBufferANDROID& LINK_eglGetRenderBufferANDROID,
+                  functype_eglGetCurrentSurface LINK_eglGetCurrentSurface);
     static bool canUseCopybitForYUV (hwc_context_t *ctx);
     static bool canUseCopybitForRGB (hwc_context_t *ctx,
                                      hwc_display_contents_1_t *list);
     static bool validateParams (hwc_context_t *ctx,
                                 const hwc_display_contents_1_t *list);
+    static bool canUseContiguousMemory(const hwc_display_contents_1_t* list);
     static void closeEglLib();
     static void openEglLibAndGethandle();
 private:
     //Marks layer flags if this feature is used
     static void markFlags(hwc_layer_1_t *layer);
-    //Flags on animation
-    static bool sIsSkipLayerPresent;
+    //returns yuv count
+    static int getYuvCount();
+
+    //Number of yuv layers in this drawing round
+    static int sYuvCount;
+    //Index of YUV layer, relevant only if count is 1
+    static int sYuvLayerIndex;
+    //Flags if a yuv layer is animating or below something that is animating
+    static bool sIsLayerSkip;
     //Flags if this feature is on.
     static bool sIsModeOn;
+    //handle for adreno lib
+    static void* egl_lib;
     // flag that indicates whether CopyBit is enabled or not
     static bool sCopyBitDraw;
+
+    static functype_eglGetRenderBufferANDROID LINK_eglGetRenderBufferANDROID;
+    static functype_eglGetCurrentSurface LINK_eglGetCurrentSurface;
 
     static  unsigned int getRGBRenderingArea (const hwc_display_contents_1_t *list);
 
@@ -81,9 +100,17 @@ private:
     static CopybitEngine* sInstance; // singleton
 };
 
-inline void CopyBit::setStats(int skipCount) {
-    sIsSkipLayerPresent = (skipCount != 0);
+
+inline void CopyBit::setStats(int yuvCount, int yuvLayerIndex,
+        bool isYuvLayerSkip) {
+    sYuvCount = yuvCount;
+    sYuvLayerIndex = yuvLayerIndex;
+    sIsLayerSkip = isYuvLayerSkip;
 }
+
+inline int CopyBit::getYuvCount() { return sYuvCount; }
+
+
 }; //namespace qhwc
 
 #endif //HWC_COPYBIT_H

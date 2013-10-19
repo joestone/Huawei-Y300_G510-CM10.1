@@ -70,6 +70,7 @@ PRODUCT_PACKAGES += liboverlay
 PRODUCT_PACKAGES += libexternal
 PRODUCT_PACKAGES += libqservice
 PRODUCT_PACKAGES += libgenlock
+PRODUCT_PACKAGES += libtilerenderer
 
 # Audio
 PRODUCT_PACKAGES += \
@@ -78,6 +79,10 @@ PRODUCT_PACKAGES += \
     audio_policy.msm7x27a \
     audio.usb.default \
     libaudioutils
+	
+# Bluetooth
+PRODUCT_PACKAGES += \
+    btmac
 
 # GPS
 PRODUCT_PACKAGES += \
@@ -93,7 +98,8 @@ PRODUCT_PACKAGES += \
    libnfc \
    libnfc_jni \
    libnfc_ndev \
-   Nfc	
+   Nfc	\
+   Tag
 	
 # Live Wallpapers
 PRODUCT_PACKAGES += \
@@ -121,16 +127,6 @@ PRODUCT_PACKAGES += \
 	SpareParts \
 	libnl_2 \
     com.android.future.usb.accessory
-	
-# Bluez
-#PRODUCT_PACKAGES += \
-#    bluetoothd \
-#    libbluetoothd \
-#    libbluedroid \
-#    hcitool \
-#    hciconfig \
-#    hciattach \
-#    javax.btobex
 
 PRODUCT_COPY_FILES += \
     device/huawei/daytona-common/ramdisk/init.rc:root/init.rc \
@@ -154,7 +150,7 @@ device/huawei/daytona-common/recovery/sbin/charge.sh:/recovery/root/sbin/charge.
 PRODUCT_COPY_FILES += \
     frameworks/native/data/etc/handheld_core_hardware.xml:system/etc/permissions/handheld_core_hardware.xml \
     frameworks/native/data/etc/android.hardware.telephony.gsm.xml:system/etc/permissions/android.hardware.telephony.gsm.xml \
-    frameworks/native/data/etc/android.hardware.camera.xml:system/etc/permissions/android.hardware.camera.xml \
+    frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:system/etc/permissions/android.hardware.camera.flash-autofocus.xml \
     frameworks/native/data/etc/android.hardware.camera.front.xml:system/etc/permissions/android.hardware.camera.front.xml \
     frameworks/native/data/etc/android.hardware.camera.autofocus.xml:system/etc/permissions/android.hardware.camera.autofocus.xml \
     frameworks/native/data/etc/android.hardware.camera.flash-autofocus.xml:system/etc/permissions/android.hardware.camera.flash-autofocus.xml \

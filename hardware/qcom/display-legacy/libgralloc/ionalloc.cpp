@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011-2012, Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2011-2012, The Linux Foundation. All rights reserved.
 
  * Redistribution and use in source and binary forms, with or without
  * modification, are permitted provided that the following conditions are
@@ -10,7 +10,7 @@
  *     copyright notice, this list of conditions and the following
  *     disclaimer in the documentation and/or other materials provided
  *     with the distribution.
- *   * Neither the name of Code Aurora Forum, Inc. nor the names of its
+ *   * Neither the name of The Linux Foundation nor the names of its
  *     contributors may be used to endorse or promote products derived
  *     from this software without specific prior written permission.
  *
@@ -27,7 +27,7 @@
  * IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-#define DEBUG 0
+
 #include <linux/ioctl.h>
 #include <sys/mman.h>
 #include <stdlib.h>
@@ -144,7 +144,7 @@ int IonAlloc::alloc_buffer(alloc_data& data)
     data.base = base;
     data.fd = fd_data.fd;
     ioctl(mIonFd, ION_IOC_FREE, &handle_data);
-    ALOGD_IF(DEBUG, "ion: Allocated buffer base:%p size:%d fd:%d",
+    ALOGV("ion: Allocated buffer base:%p size:%d fd:%d",
           data.base, ionAllocData.len, data.fd);
     return 0;
 }
@@ -153,7 +153,7 @@ int IonAlloc::alloc_buffer(alloc_data& data)
 int IonAlloc::free_buffer(void* base, size_t size, int offset, int fd)
 {
     Locker::Autolock _l(mLock);
-    ALOGD_IF(DEBUG, "ion: Freeing buffer base:%p size:%d fd:%d",
+    ALOGV("ion: Freeing buffer base:%p size:%d fd:%d",
           base, size, fd);
     int err = 0;
     err = open_device();
@@ -181,10 +181,10 @@ int IonAlloc::map_buffer(void **pBase, size_t size, int offset, int fd)
     *pBase = base;
     if(base == MAP_FAILED) {
         err = -errno;
-        ALOGE("ion: Failed to map memory in the client: %s",
+        ALOGD("ion: Failed to map memory in the client: %s",
               strerror(errno));
     } else {
-        ALOGD_IF(DEBUG, "ion: Mapped buffer base:%p size:%d offset:%d fd:%d",
+        ALOGV("ion: Mapped buffer base:%p size:%d offset:%d fd:%d",
               base, size, offset, fd);
     }
     return err;
@@ -192,7 +192,7 @@ int IonAlloc::map_buffer(void **pBase, size_t size, int offset, int fd)
 
 int IonAlloc::unmap_buffer(void *base, size_t size, int offset)
 {
-    ALOGD_IF(DEBUG, "ion: Unmapping buffer  base:%p size:%d", base, size);
+    ALOGV("ion: Unmapping buffer  base:%p size:%d", base, size);
     int err = 0;
     if(munmap(base, size)) {
         err = -errno;
@@ -230,6 +230,7 @@ int IonAlloc::clean_buffer(void *base, size_t size, int offset, int fd)
     if(ioctl(mIonFd, ION_IOC_CLEAN_INV_CACHES, &flush_data)) {
         err = -errno;
         ALOGE("%s: ION_IOC_CLEAN_INV_CACHES failed with error - %s",
+
               __FUNCTION__, strerror(errno));
         ioctl(mIonFd, ION_IOC_FREE, &handle_data);
         return err;

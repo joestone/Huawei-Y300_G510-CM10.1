@@ -1,7 +1,7 @@
 From b48efe193024fb3232b69150e04d59be0565056a Mon Sep 17 00:00:00 2001
 From: Kra1o5 <kra1o5x@gmail.com>
 Date: Wed, 28 Aug 2013 18:17:12 +0200
-Subject: [PATCH 3/3] fix-hwcomposer-compile
+Subject: [PATCH] fix-hwcomposer-compile
 
 ---
  libhwcomposer/hwc_utils.h | 1 +

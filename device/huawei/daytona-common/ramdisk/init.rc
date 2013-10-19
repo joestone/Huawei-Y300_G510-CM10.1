@@ -432,6 +432,7 @@ mount debugfs /sys/kernel/debug /sys/kernel/debug
     chmod 0660 /sys/module/bluetooth_power/parameters/power
     chmod 0660 /sys/module/hci_smd/parameters/hcismd_set
     chmod 0660 /sys/class/rfkill/rfkill0/state
+    chmod 0660 /sys/class/rfkill/rfkill0/type
     chmod 0660 /proc/bluetooth/sleep/proto
     chmod 0660 /proc/bluetooth/clock/proto
     chown bluetooth bluetooth /dev/ttyHS0
@@ -452,25 +453,11 @@ mount debugfs /sys/kernel/debug /sys/kernel/debug
     # Allow QMUX daemon to assign port open wait time
     chown radio radio /sys/devices/virtual/hsicctl/hsicctl0/modem_wait
 
-#/* < DTS2012011902218 zhuwenying 20120119 begin */
-    setprop wifi.interface eth0
-
-    # Enable Bluetooth 802.11 PAL when Bluetooth is turned on
-    setprop ro.config.bt.amp no
-
-
-    #Set SUID bit for usbhub
-    chmod 4755 /system/bin/usbhub
-    chmod 755 /system/bin/usbhub_init
-
-    #Remove SUID bit for iproute2 ip tool
-    chmod 0755 /system/bin/ip
-
-    #port-bridge
+    # Port-bridge
     chmod 0660 /dev/smd0
     chown system system /dev/smd0
 
-    #BT DUN port-bridge
+    # BT DUN port-bridge
     chmod 0660 /dev/smd7
     chown bluetooth bluetooth /dev/smd7
 
@@ -480,6 +467,7 @@ mount debugfs /sys/kernel/debug /sys/kernel/debug
     symlink /dev/graphics/fb1 /dev/graphics/hdmi
 
     # Remove write permissions to video related nodes
+    chown system graphics /sys/class/graphics/fb1/hpd
     chmod 0664 /sys/devices/virtual/graphics/fb1/hpd
     chmod 0664 /sys/devices/virtual/graphics/fb1/video_mode
     chmod 0664 /sys/devices/virtual/graphics/fb1/format_3d
@@ -487,7 +475,7 @@ mount debugfs /sys/kernel/debug /sys/kernel/debug
     # Change owner and group for media server and surface flinger
     chown system system /sys/devices/virtual/graphics/fb1/format_3d
 
-    #For bridgemgr daemon to inform the USB driver of the correct transport
+    # For bridgemgr daemon to inform the USB driver of the correct transport
     chown radio radio /sys/class/android_usb/f_rmnet_smd_sdio/transport
 
     #To allow interfaces to get v6 address when tethering is enabled
@@ -751,7 +739,6 @@ mount debugfs /sys/kernel/debug /sys/kernel/debug
     chown system system /sys/devices/platform/msm_hsusb/gadget/sdstatus
     chown system system /sys/devices/platform/msm_hsusb/gadget/switchusb
     chown system system /sys/devices/platform/msm_hsusb/gadget/fixusb
-#/* DTS2011040900138 genghua 201410409 end >*/
 # Define TCP buffer sizes for various networks
 #   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
     setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
@@ -768,8 +755,7 @@ mount debugfs /sys/kernel/debug /sys/kernel/debug
 # Assign TCP buffer thresholds to be ceiling value of technology maximums
 # Increased technology maximums should be reflected here.
     write /proc/sys/net/core/rmem_max  2097152
-    write /proc/sys/net/core/wmem_max  1220608
-
+    write /proc/sys/net/core/wmem_max  1220608 
 # Set this property so surfaceflinger is not started by system_init
     setprop system_init.startsurfaceflinger 0
 
@@ -961,6 +947,15 @@ service iprenew_eth0 /system/bin/dhcpcd -n
     class main        
     disabled        
     oneshot	
+service dhcpcd_bt-pan /system/bin/dhcpcd -BKLG
+    class late_start 
+    disabled
+    oneshot
+ 
+service iprenew_bt-pan /system/bin/dhcpcd -n
+    class late_start
+    disabled
+    oneshot
 	
 service iprenew_p2p /system/bin/dhcpcd -n p2p
     class main
@@ -986,6 +981,7 @@ service installd /system/bin/installd
     socket installd stream 600 system system
 
 service mpdecision /system/bin/mpdecision --Nw 5.4 --Ts 350 --no_sleep --avg_comp --single_core_while_panel_off 
+#service mpdecision /system/bin/mpdecision --no_sleep --avg_comp
     class late_start
 	user root
 	disabled
@@ -1093,67 +1089,6 @@ on property:ro.use_data_netmgrd=false
     # netmgr not supported on specific target
     stop netmgrd
 	
-#service fm_dl /system/bin/sh /system/etc/init.qcom.fm.sh
-#    class main
-#    user root
-#    group system qcom_oncrpc
-#    disabled
-#    oneshot
-    
-service dhcpcd_brcm-pan /system/bin/dhcpcd -ABKL
-        class main
-        disabled
-        oneshot
-
-service iprenew_brcm-pan /system/bin/dhcpcd -n
-        class main
-        disabled
-        oneshot
-
-#STOPSHIP: Remove logwrapper and -d option before production
-service bluetoothd /system/bin/bluetoothd -n
-    class main
-    socket bluetooth stream 660 bluetooth bluetooth
-    socket dbus_bluetooth stream 660 bluetooth bluetooth
-# init.rc does not yet support applying capabilities, so run as root and
-# let bluetoothd drop uid to bluetooth with the right linux capabilities
-    group bluetooth net_bt_admin misc
-    disabled
-#/* DTS2012020604357 zhangyun 20120206 end > */
-    
-
-service hciattach /system/bin/sh /system/etc/init.qcom.bt.sh
-    class late_start
-    user bluetooth
-    group qcom_oncrpc bluetooth net_bt_admin
-    disabled
-    oneshot
-
-service bt-dun /system/bin/dun-server /dev/smd7 /dev/rfcomm0
-    class late_start
-    user bluetooth
-    group bluetooth net_bt_admin inet
-    disabled
-    oneshot
-
-service bt-sap /system/bin/sapd 15
-    class late_start
-    disabled
-    oneshot
-
-service sapd /system/bin/sdptool add --channel=15 SAP
-    class late_start
-    user bluetooth
-    group bluetooth net_bt_admin
-    disabled
-    oneshot
-
-service dund /system/bin/sdptool add --channel=1 DUN
-    class late_start
-    user bluetooth
-    group bluetooth net_bt_admin
-    disabled
-    oneshot 
 
 service bridgemgrd /system/bin/bridgemgrd
     class main
@@ -1167,9 +1102,6 @@ service port-bridge /system/bin/port-bridge /dev/smd0 /dev/ttyGS0
     group system inet
     disabled
 
-on property:ro.baseband="msm"
-    # Enable BT-DUN only for all msms
-    setprop ro.qualcomm.bluetooth.dun true
 
 service qmiproxy /system/bin/qmiproxy
     class main
@@ -1187,37 +1119,6 @@ service qmuxd /system/bin/qmuxd
 # but only if ro.data.large_tcp_window_size property is set.
 on property:ro.data.large_tcp_window_size=true
     write /proc/sys/net/ipv4/tcp_adv_win_scale  1
-
-service btwlancoex /system/bin/sh /system/etc/init.qcom.coex.sh
-    class main
-    user bluetooth
-    group bluetooth net_bt_admin inet net_admin net_raw
-    disabled
-    oneshot
-
-service amp_init /system/bin/amploader -i
-    class main
-    user root
-    disabled
-    oneshot
-
-service amp_load /system/bin/amploader -l 7000
-    class main
-    user root
-    disabled
-    oneshot
-
-service amp_unload /system/bin/amploader -u
-    class main
-    user root
-    disabled
-    oneshot
-
-#/*< DTS2011063003923 lihongbin 20110630 begin */
-#start the test_diag support automation and diag in arm11
-#redefinition so delete it
-#service test_diag /system/bin/test_diag
-#/* DTS2011063003923 lihongbin 20110630 end >*/ 
 
 service gpu_dcvsd /system/bin/gpu_dcvsd
     class late_start
@@ -1241,11 +1142,3 @@ service thermald /system/bin/thermald
     group root
     disabled
 
-#on property:persist.thermal.monitor=true
-#    start thermald
-service abtfilt /system/bin/abtfilt -a -d -z -n -q -v -s -w eth0
-    class late_start
-    user root
-    group bluetooth net_bt_admin inet net_admin net_raw
-    disabled
-    oneshot 

@@ -1,6 +1,6 @@
 /*
  * Copyright (C) 2008 The Android Open Source Project
- * Copyright (c) 2010-2012 Code Aurora Forum. All rights reserved.
+ * Copyright (c) 2010-2012 The Linux Foundation. All rights reserved.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -152,6 +152,7 @@ static int fb_post(struct framebuffer_device_t* dev, buffer_handle_t buffer)
 static int fb_compositionComplete(struct framebuffer_device_t* dev)
 {
     // TODO: Properly implement composition complete callback
+    glFinish();
 
     return 0;
 }
@@ -207,14 +208,25 @@ int mapFrameBufferLocked(struct private_module_t* module)
         /*
          * Explicitly request RGBA_8888
          */
-        info.bits_per_pixel = 32;
-        info.red.offset     = 24;
-        info.red.length     = 8;
-        info.green.offset   = 16;
-        info.green.length   = 8;
-        info.blue.offset    = 8;
-        info.blue.length    = 8;
+#if defined(SEMC_RGBA_8888_OFFSET) || defined(HTC_RGBA_8888_OFFSET)
+        info.red.offset     = 0;
+        info.green.offset   = 8;
+        info.blue.offset    = 16;
+#ifdef SEMC_RGBA_8888_OFFSET
+        info.transp.offset  = 24;
+#else
         info.transp.offset  = 0;
+#endif
+#else
+        info.red.offset     = 24;
+        info.green.offset   = 16;
+        info.blue.offset    = 8;
+        info.transp.offset  = 0;
+#endif
+        info.bits_per_pixel = 32;
+        info.red.length     = 8;
+        info.green.length   = 8;
+        info.blue.length    = 8;
         info.transp.length  = 8;
 
         /* Note: the GL driver does not have a r=8 g=8 b=8 a=0 config, so if we
@@ -269,23 +281,7 @@ int mapFrameBufferLocked(struct private_module_t* module)
     uint32_t line_length = (info.xres * info.bits_per_pixel / 8);
     info.yres_virtual = (size * numberOfBuffers) / line_length;
 
-#ifndef NO_HW_VSYNC
-    struct msmfb_metadata metadata;
-
-    metadata.op = metadata_op_base_blend;
-    metadata.flags = 0;
-    metadata.data.blend_cfg.is_premultiplied = 1;
-    if(ioctl(fd, MSMFB_METADATA_SET, &metadata) == -1) {
-        ALOGW("MSMFB_METADATA_SET failed to configure alpha mode");
-    }
-#endif
-
     uint32_t flags = PAGE_FLIP;
-    if (ioctl(fd, FBIOPUT_VSCREENINFO, &info) == -1) {
-        info.yres_virtual = size / line_length;
-        flags &= ~PAGE_FLIP;
-        ALOGW("FBIOPUT_VSCREENINFO failed, page flipping not supported");
-    }
 
     if (info.yres_virtual < ((size * 2) / line_length) ) {
         // we need at least 2 for page-flipping
@@ -309,11 +305,11 @@ int mapFrameBufferLocked(struct private_module_t* module)
     float ydpi = (info.yres * 25.4f) / info.height;
     //The reserved[3] field is used to store FPS by the driver.
 #ifndef REFRESH_RATE
-     float fps  = info.reserved[3] & 0xFF;
+    float fps  = info.reserved[3] & 0xFF;
 #else
     float fps  = REFRESH_RATE;
 #endif
-  
+
     ALOGI("using (fd=%d)\n"
           "id           = %s\n"
           "xres         = %d px\n"
@@ -372,7 +368,7 @@ int mapFrameBufferLocked(struct private_module_t* module)
     size_t fbSize = roundUpToPageSize(finfo.line_length * info.yres)*
                     module->numBuffers;
     module->framebuffer = new private_handle_t(fd, fbSize,
-                                        private_handle_t::PRIV_FLAGS_USES_PMEM,
+                                        private_handle_t::PRIV_FLAGS_USES_ION,
                                         BUFFER_TYPE_UI,
                                         module->fbFormat, info.xres, info.yres);
     void* vaddr = mmap(0, fbSize, PROT_READ|PROT_WRITE, MAP_SHARED, fd, 0);
@@ -406,7 +402,9 @@ static int fb_close(struct hw_device_t *dev)
 {
     fb_context_t* ctx = (fb_context_t*)dev;
     if (ctx) {
-        free(ctx);
+        //Hack until fbdev is removed. Framework could close this causing hwc a
+        //pain.
+        //free(ctx);
     }
     return 0;
 }
