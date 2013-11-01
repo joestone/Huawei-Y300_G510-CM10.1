@@ -35,7 +35,6 @@ extern u32 mdp_max_clk;
 
 #define MDP4_VIDEO_BASE 0x20000
 #define MDP4_VIDEO_OFF 0x10000
-#define MDP4_VIDEO_CSC_OFF 0x4000
 
 #define MDP4_RGB_BASE 0x40000
 #define MDP4_RGB_OFF 0x10000
@@ -92,12 +91,6 @@ enum {
 #define MDP4_PANEL_DSI_VIDEO	BIT(4)
 #define MDP4_PANEL_DSI_CMD	BIT(5)
 #define MDP4_PANEL_WRITEBACK		BIT(6)
-
-enum {
-	OVERLAY_BLT_SWITCH_TG_ON,
-	OVERLAY_BLT_SWITCH_TG_OFF,
-	OVERLAY_BLT_ALWAYS_ON
-};
 
 enum {
 	OVERLAY_MODE_NONE,
@@ -188,8 +181,6 @@ enum {
 	MDP4_CHROMA_H1V2,
 	MDP4_CHROMA_420
 };
-
-#define CSC_MAX_BLOCKS 6
 
 #define MDP4_BLEND_BG_TRANSP_EN		BIT(9)
 #define MDP4_BLEND_FG_TRANSP_EN		BIT(8)
@@ -354,7 +345,7 @@ struct mdp4_overlay_pipe {
 	uint32 ov_cnt;
 	uint32 dmap_cnt;
 	uint32 dmae_cnt;
-	uint32 blt_end;
+	uint32 blt_end;	/* used by mddi only */
 	uint32 blt_ov_koff;
 	uint32 blt_ov_done;
 	uint32 blt_dmap_koff;

@@ -3070,16 +3070,6 @@ int mdp4_overlay_set(struct fb_info *info, struct mdp_overlay *req)
 			pipe->flags &= ~MDP_SHARPENING;
 		}
 	}
-	mdp4_stat.overlay_set[pipe->mixer_num]++;
-
-	if (pipe->flags & MDP_OVERLAY_PP_CFG_EN) {
-		if (pipe->pipe_num <= OVERLAY_PIPE_VG2)
-			memcpy(&pipe->pp_cfg, &req->overlay_pp_cfg,
-					sizeof(struct mdp_overlay_pp_params));
-		else
-			pr_debug("%s: RGB Pipes don't support CSC/QSEED\n",
-								__func__);
-	  }
 
 	mdp4_overlay_mdp_pipe_req(pipe, mfd);
 
@@ -3537,8 +3527,6 @@ int mdp4_overlay_commit(struct fb_info *info, int mixer)
 
 	mdp4_overlay_mdp_perf_upd(mfd, 1);
 
-	msm_fb_wait_for_fence(mfd);
-
 	if (mixer == MDP4_MIXER0) {
 		if (ctrl->panel_mode & MDP4_PANEL_DSI_CMD) {
 			/* cndx = 0 */
@@ -3554,7 +3542,6 @@ int mdp4_overlay_commit(struct fb_info *info, int mixer)
 		if (ctrl->panel_mode & MDP4_PANEL_DTV)
 			mdp4_dtv_pipe_commit(0, 1);
 	}
-	msm_fb_signal_timeline(mfd);
 
 	mdp4_overlay_mdp_perf_upd(mfd, 0);
 

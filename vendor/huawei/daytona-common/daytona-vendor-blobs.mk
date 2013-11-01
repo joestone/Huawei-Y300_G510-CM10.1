@@ -68,18 +68,6 @@ PRODUCT_COPY_FILES += \
 	vendor/huawei/daytona-common/proprietary/lib/libaudioalsa.so:system/lib/libaudioalsa.so \
     vendor/huawei/daytona-common/proprietary/lib/libaudioeq.so:system/lib/libaudioeq.so \
     vendor/huawei/daytona-common/proprietary/lib/libauth.so:system/lib/libauth.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_ov5647_default_video.so:system/lib/libchromatix_ov5647_default_video.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_ov5647_ff_default_video.so:system/lib/libchromatix_ov5647_ff_default_video.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_ov5647_ff_preview.so:system/lib/libchromatix_ov5647_ff_preview.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_ov5647_ff_video_hfr.so:system/lib/libchromatix_ov5647_ff_video_hfr.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_ov5647_preview.so:system/lib/libchromatix_ov5647_preview.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_ov5647_video_hfr.so:system/lib/libchromatix_ov5647_video_hfr.so \
-	vendor/huawei/daytona-common/proprietary/lib/libchromatix_s5k4e1_3_default_video.so:system/lib/libchromatix_s5k4e1_3_default_video.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_s5k4e1_3_preview.so:system/lib/libchromatix_s5k4e1_3_preview.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_s5k4e1_default_video.so:system/lib/libchromatix_s5k4e1_default_video.so \
-	vendor/huawei/daytona-common/proprietary/lib/libchromatix_s5k4e1_f_default_video.so:system/lib/libchromatix_s5k4e1_default_video.so \
-    vendor/huawei/daytona-common/proprietary/lib/libchromatix_s5k4e1_f_preview.so:system/lib/libchromatix_s5k4e1_f_preview.so \
-	vendor/huawei/daytona-common/proprietary/lib/libchromatix_s5k4e1_preview.so:system/lib/libchromatix_s5k4e1_preview.so \
 	vendor/huawei/daytona-common/proprietary/lib/libcm.so:system/lib/libcm.so \
 	vendor/huawei/daytona-common/proprietary/lib/libcneapiclient.so:system/lib/libcneapiclient.so \
     vendor/huawei/daytona-common/proprietary/lib/libcnefeatureconfig.so:system/lib/libcnefeatureconfig.so \
@@ -104,6 +92,7 @@ PRODUCT_COPY_FILES += \
 	vendor/huawei/daytona-common/proprietary/lib/libgsdi_exp.so:system/lib/libgsdi_exp.so \
     vendor/huawei/daytona-common/proprietary/lib/libgstk_exp.so:system/lib/libgstk_exp.so \
     vendor/huawei/daytona-common/proprietary/lib/libhwnv.so:obj/lib/libhwnv.so \
+    vendor/huawei/daytona-common/proprietary/lib/libhwnv.so:system/lib/libhwnv.so \
     vendor/huawei/daytona-common/proprietary/lib/libhwrpc.so:system/lib/libhwrpc.so \
 	vendor/huawei/daytona-common/proprietary/lib/libI420colorconvert.so:system/lib/libI420colorconvert.so \
     vendor/huawei/daytona-common/proprietary/lib/libidl.so:system/lib/libidl.so \
@@ -202,7 +191,12 @@ PRODUCT_COPY_FILES += \
     vendor/huawei/daytona-common/proprietary/lib/libpn544_fw.so:system/lib/libpn544_fw.so \
     vendor/huawei/daytona-common/proprietary/lib/libifdsmartcardapi.so:system/lib/libifdsmartcardapi.so \
 	vendor/huawei/daytona-common/proprietary/bin/nfc_check:system/bin/nfc_check \
-	vendor/huawei/daytona-common/proprietary/bin/mpdecision2:system/bin/mpdecision \
+	vendor/huawei/daytona-common/proprietary/bin/mpdecision:system/bin/mpdecision \
     vendor/huawei/daytona-common/proprietary/lib/libhdr.so:system/lib/libhdr.so \
     vendor/huawei/daytona-common/proprietary/lib/libmmirunning.so:system/lib/libmmirunning.so \
-    vendor/huawei/daytona-common/proprietary/lib/libmm-omxcore.so:system/lib/libmm-omxcore.so \
+#   vendor/huawei/daytona-common/proprietary/lib/libmm-omxcore.so:system/lib/libmm-omxcore.so \
+#    vendor/huawei/daytona-common/proprietary/lib/libmm-omxcore.so:obj/lib/libmm-omxcore.so \
+#    vendor/huawei/daytona-common/proprietary/lib/libOmxCore.so:system/lib/libOmxCore.so \
+#    vendor/huawei/daytona-common/proprietary/lib/libOmxCore.so:obj/lib/libOmxCore.so \
+#    vendor/huawei/daytona-common/proprietary/lib/libstagefrighthw.so:system/lib/libstagefrighthw.so \
+#    vendor/huawei/daytona-common/proprietary/lib/libstagefrighthw.so:obj/lib/libstagefrighthw.so \

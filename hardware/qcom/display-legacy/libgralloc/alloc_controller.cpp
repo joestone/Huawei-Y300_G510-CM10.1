@@ -46,9 +46,9 @@
 //ANDROID_SINGLETON_STATIC_INSTANCE(qdutils::QCCompositionType);
 
 
-#ifndef ION_ADSP_HEAP_ID
-#define ION_ADSP_HEAP_ID ION_CAMERA_HEAP_ID
-#endif
+//#ifndef ION_ADSP_HEAP_ID
+//#define ION_ADSP_HEAP_ID ION_CAMERA_HEAP_ID
+//#endif
 using namespace gralloc;
 using namespace qdutils;
 
@@ -63,9 +63,9 @@ static bool canFallback(int usage, bool triedSystem)
     // 4. The heap type is protected
     // 5. The buffer is meant for external display only
 
-    if(QCCompositionType::getInstance().getCompositionType() &
-       COMPOSITION_TYPE_MDP)
-        return false;
+//    if(QCCompositionType::getInstance().getCompositionType() &
+//       COMPOSITION_TYPE_MDP)
+//        return false;
     if(triedSystem)
         return false;
     if(usage & (GRALLOC_HEAP_MASK | GRALLOC_USAGE_PROTECTED |
@@ -124,7 +124,7 @@ int IonController::allocate(alloc_data& data, int usage,
 
     if(usage & GRALLOC_USAGE_PRIVATE_IOMMU_HEAP) {
         ionFlags |= ION_HEAP(ION_IOMMU_HEAP_ID);
-        noncontig = true;
+//        noncontig = true;
     }
 
     if(usage & GRALLOC_USAGE_PRIVATE_MM_HEAP)
@@ -139,11 +139,11 @@ int IonController::allocate(alloc_data& data, int usage,
     if(usage & GRALLOC_USAGE_PRIVATE_CP_BUFFER)
         ionFlags |= ION_SECURE;
 
-    if(usage & GRALLOC_USAGE_PRIVATE_ADSP_HEAP)
+/*    if(usage & GRALLOC_USAGE_PRIVATE_ADSP_HEAP)
         ionFlags |= ION_HEAP(ION_ADSP_HEAP_ID);
 
     if(usage & GRALLOC_USAGE_PROTECTED && !noncontig)
-        ionFlags |= ION_SECURE;
+        ionFlags |= ION_SECURE;*/
 
     if(usage & GRALLOC_USAGE_PRIVATE_DO_NOT_MAP)
         data.allocType  |=  private_handle_t::PRIV_FLAGS_NOT_MAPPED;
@@ -165,13 +165,13 @@ int IonController::allocate(alloc_data& data, int usage,
     // allocation from SF heap fails
     // Reason : fb1 had to go to MDP and MDP can't use system heap
     // TODO : don't hardcode based on 'usage'
-
+/*
     if(ret < 0 && (usage == 6659)) {
        ALOGW("Falling back to CAMERA_PREVIEW heap for fb allocations");
        data.flags = ION_HEAP(ION_CAMERA_HEAP_ID);
        ret = mIonAlloc->alloc_buffer(data);
     }
-
+*/
     // Fallback to system heap
     if(ret < 0 && canFallback(usage,
                               (ionFlags & ION_SYSTEM_HEAP_ID)))

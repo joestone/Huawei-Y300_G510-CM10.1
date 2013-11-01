@@ -189,6 +189,9 @@ on emmc-fs
     mount ext4 /dev/block/mmcblk0p15 /cache nosuid nodev barrier=1,nodelalloc
 	#write /sys/module/block2mtd/parameters/block2mtd /dev/block/mmcblk0p17 
     write /sys/module/block2mtd/parameters/block2mtd /dev/block/mmcblk0p14
+	write /sys/devices/virtual/bdi/179:0/read_ahead_kb 512
+	write /sys/devices/virtual/bdi/179:32/read_ahead_kb 512
+	write /sys/devices/virtual/bdi/default/read_ahead_kb 512
     
     exec /system/bin/iqcopy /system/etc/iq.img.vfat /data/iq.img.vfat
     chown system system /data/iq.img.vfat
@@ -741,16 +744,18 @@ mount debugfs /sys/kernel/debug /sys/kernel/debug
     chown system system /sys/devices/platform/msm_hsusb/gadget/fixusb
 # Define TCP buffer sizes for various networks
 #   ReadMin, ReadInitial, ReadMax, WriteMin, WriteInitial, WriteMax,
-    setprop net.tcp.buffersize.default 4096,87380,110208,4096,16384,110208
+    setprop net.tcp.buffersize.default 4096,87380,704512,4096,16384,110208
     setprop net.tcp.buffersize.wifi    524288,1048576,2097152,262144,524288,1048576
-    setprop net.tcp.buffersize.lte     4094,87380,1220608,4096,16384,1220608
-    setprop net.tcp.buffersize.umts    4094,87380,110208,4096,16384,110208
-    setprop net.tcp.buffersize.hspa    4094,87380,1220608,4096,16384,1220608
-    setprop net.tcp.buffersize.hsupa   4094,87380,1220608,4096,16384,1220608
-    setprop net.tcp.buffersize.hsdpa   4094,87380,1220608,4096,16384,1220608
-    setprop net.tcp.buffersize.edge    4093,26280,35040,4096,16384,35040
-    setprop net.tcp.buffersize.gprs    4092,8760,11680,4096,8760,11680
-    setprop net.tcp.buffersize.evdo_b  4094,87380,262144,4096,16384,262144
+    setprop net.tcp.buffersize.lte     4096,87380,1220608,4096,16384,563200
+    setprop net.tcp.buffersize.umts    4096,87380,563200,4096,16384,110208
+    setprop net.tcp.buffersize.hspa    4096,87380,704512,4096,16384,110208
+    setprop net.tcp.buffersize.hsupa   4096,87380,704512,4096,16384,262144
+    setprop net.tcp.buffersize.hsdpa   4096,87380,704512,4096,16384,262144
+    setprop net.tcp.buffersize.hspap   4096,87380,1220608,4096,16384,393216
+    setprop net.tcp.buffersize.edge    4096,26280,35040,4096,16384,35040
+    setprop net.tcp.buffersize.gprs    4096,8760,11680,4096,8760,11680
+    setprop net.tcp.buffersize.evdo    4096,87380,563200,4096,16384,262144
+    setprop net.tcp.buffersize.evdo_b  4096,87380,704512,4096,16384,262144 
 
 # Assign TCP buffer thresholds to be ceiling value of technology maximums
 # Increased technology maximums should be reflected here.
@@ -980,8 +985,8 @@ service installd /system/bin/installd
     class main
     socket installd stream 600 system system
 
-service mpdecision /system/bin/mpdecision --Nw 5.4 --Ts 350 --no_sleep --avg_comp --single_core_while_panel_off 
-#service mpdecision /system/bin/mpdecision --no_sleep --avg_comp
+#service mpdecision /system/bin/mpdecision --Nw 5.4 --Ts 350 --no_sleep --avg_comp --single_core_while_panel_off 
+service mpdecision /system/bin/mpdecision --no_sleep --avg_comp
     class late_start
 	user root
 	disabled

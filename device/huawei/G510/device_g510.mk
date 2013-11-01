@@ -42,7 +42,7 @@ PRODUCT_PACKAGES += libOmxEvrcEnc
 PRODUCT_PACKAGES += libOmxQcelp13Enc
 
 #MM_VIDEO
-PRODUCT_PACKAGES += ast-mm-vdec-omx-test
+#PRODUCT_PACKAGES += ast-mm-vdec-omx-test
 PRODUCT_PACKAGES += libdivxdrmdecrypt
 PRODUCT_PACKAGES += liblasic
 PRODUCT_PACKAGES += libOmxVdec
@@ -51,10 +51,10 @@ PRODUCT_PACKAGES += libOpenMAXAL
 PRODUCT_PACKAGES += libOpenSLES
 PRODUCT_PACKAGES += libOmxVidEnc
 PRODUCT_PACKAGES += mm-vdec-omx-property-mgr
-PRODUCT_PACKAGES += mm-vdec-omx-test
-PRODUCT_PACKAGES += mm-venc-omx-test
-PRODUCT_PACKAGES += mm-venc-omx-test720p
-PRODUCT_PACKAGES += mm-video-driver-test
+#PRODUCT_PACKAGES += mm-vdec-omx-test
+#PRODUCT_PACKAGES += mm-venc-omx-test
+#PRODUCT_PACKAGES += mm-venc-omx-test720p
+#PRODUCT_PACKAGES += mm-video-driver-test
 PRODUCT_PACKAGES += libdashplayer
 PRODUCT_PACKAGES += qcmediaplayer
 
@@ -70,7 +70,6 @@ PRODUCT_PACKAGES += liboverlay
 PRODUCT_PACKAGES += libexternal
 PRODUCT_PACKAGES += libqservice
 PRODUCT_PACKAGES += libgenlock
-PRODUCT_PACKAGES += libtilerenderer
 
 # Audio
 PRODUCT_PACKAGES += \

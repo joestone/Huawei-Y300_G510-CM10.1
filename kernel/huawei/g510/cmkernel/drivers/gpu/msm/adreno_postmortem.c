@@ -19,11 +19,22 @@
 #include "adreno.h"
 #include "adreno_pm4types.h"
 #include "adreno_ringbuffer.h"
+#include "adreno_postmortem.h"
+#include "adreno_debugfs.h"
 #include "kgsl_cffdump.h"
 #include "kgsl_pwrctrl.h"
 
 #include "a2xx_reg.h"
 #include "a3xx_reg.h"
+
+#ifdef CONFIG_DEVICE_CHECK
+#include <linux/dev_check.h>
+/* 在实际测试时，发现GPU挂死之前，会进入adreno_dump函数多次，导致会多次向exception节点写入数据，
+   在此加入一个全局变量，当第一次进入dump流程时，向节点写数据，然后把这个全局变置1，之后再进入dump
+   流程时，不再向节点写数据
+*/
+static int dc_adreno_dump_flag = 0;
+#endif /* End of CONFIG_DEVICE_CHECK */
 
 #define INVALID_RB_CMD 0xaaaaaaaa
 #define NUM_DWORDS_OF_RINGBUFFER_HISTORY 100
@@ -676,7 +687,7 @@ static void adreno_dump_a2xx(struct kgsl_device *device)
 		"MH_INTERRUPT: MASK = %08X | STATUS   = %08X\n", r1, r2);
 }
 
-int adreno_dump(struct kgsl_device *device, int manual)
+static int adreno_dump(struct kgsl_device *device)
 {
 	unsigned int cp_ib1_base, cp_ib1_bufsz;
 	unsigned int cp_ib2_base, cp_ib2_bufsz;
@@ -707,6 +718,14 @@ int adreno_dump(struct kgsl_device *device, int manual)
 		adreno_dump_a2xx(device);
 	else if (adreno_is_a3xx(adreno_dev))
 		adreno_dump_a3xx(device);
+		
+#ifdef CONFIG_DEVICE_CHECK
+    if(0 == dc_adreno_dump_flag)
+    {
+        DC_PRINT2EXCEPTION("Device_Check", "Device_Check: %s %d abnormal,handler!!!", "adreno_postmortem", 0);
+        dc_adreno_dump_flag = 1;
+    }
+#endif /* End of CONFIG_DEVICE_CHECK */
 
 	pt_base = kgsl_mmu_get_current_ptbase(&device->mmu);
 	cur_pt_base = pt_base;
@@ -832,7 +851,7 @@ int adreno_dump(struct kgsl_device *device, int manual)
 		cp_rb_base, cp_rb_rptr, cp_rb_wptr, read_idx);
 	adreno_dump_rb(device, rb_copy, num_item<<2, read_idx, rb_count);
 
-	if (device->pm_ib_enabled) {
+	if (is_adreno_pm_ib_enabled()) {
 		for (read_idx = NUM_DWORDS_OF_RINGBUFFER_HISTORY;
 			read_idx >= 0; --read_idx) {
 			uint32_t this_cmd = rb_copy[read_idx];
@@ -863,7 +882,7 @@ int adreno_dump(struct kgsl_device *device, int manual)
 	}
 
 	/* Dump the registers if the user asked for it */
-	if (device->pm_regs_enabled) {
+	if (is_adreno_pm_regs_enabled()) {
 		if (adreno_is_a20x(adreno_dev))
 			adreno_dump_regs(device, a200_registers,
 					a200_registers_count);
@@ -882,4 +901,86 @@ error_vfree:
 	vfree(rb_copy);
 end:
 	return result;
+}
+
+/**
+ * adreno_postmortem_dump - Dump the current GPU state
+ * @device - A pointer to the KGSL device to dump
+ * @manual - A flag that indicates if this was a manually triggered
+ *           dump (from debugfs).  If zero, then this is assumed to be a
+ *           dump automaticlaly triggered from a hang
+*/
+
+int adreno_postmortem_dump(struct kgsl_device *device, int manual)
+{
+	bool saved_nap;
+	struct kgsl_pwrctrl *pwr = &device->pwrctrl;
+
+	BUG_ON(device == NULL);
+
+	kgsl_cffdump_hang(device->id);
+
+	/* For a manual dump, make sure that the system is idle */
+
+	if (manual) {
+		if (device->active_cnt != 0) {
+			mutex_unlock(&device->mutex);
+			wait_for_completion(&device->suspend_gate);
+			mutex_lock(&device->mutex);
+		}
+
+		if (device->state == KGSL_STATE_ACTIVE)
+			kgsl_idle(device);
+
+	}
+	KGSL_LOG_DUMP(device, "POWER: FLAGS = %08lX | ACTIVE POWERLEVEL = %08X",
+			pwr->power_flags, pwr->active_pwrlevel);
+
+	KGSL_LOG_DUMP(device, "POWER: INTERVAL TIMEOUT = %08X ",
+		pwr->interval_timeout);
+
+	KGSL_LOG_DUMP(device, "GRP_CLK = %lu ",
+				  kgsl_get_clkrate(pwr->grp_clks[0]));
+
+	KGSL_LOG_DUMP(device, "BUS CLK = %lu ",
+		kgsl_get_clkrate(pwr->ebi1_clk));
+
+	/* Disable the idle timer so we don't get interrupted */
+	del_timer_sync(&device->idle_timer);
+	mutex_unlock(&device->mutex);
+	flush_workqueue(device->work_queue);
+	mutex_lock(&device->mutex);
+
+	/* Turn off napping to make sure we have the clocks full
+	   attention through the following process */
+	saved_nap = device->pwrctrl.nap_allowed;
+	device->pwrctrl.nap_allowed = false;
+
+	/* Force on the clocks */
+	kgsl_pwrctrl_wake(device);
+
+	/* Disable the irq */
+	kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_OFF);
+
+	adreno_dump(device);
+
+	/* Restore nap mode */
+	device->pwrctrl.nap_allowed = saved_nap;
+
+	/* On a manual trigger, turn on the interrupts and put
+	   the clocks to sleep.  They will recover themselves
+	   on the next event.  For a hang, leave things as they
+	   are until recovery kicks in. */
+
+	if (manual) {
+		kgsl_pwrctrl_irq(device, KGSL_PWRFLAGS_ON);
+
+		/* try to go into a sleep mode until the next event */
+		kgsl_pwrctrl_request_state(device, KGSL_STATE_SLEEP);
+		kgsl_pwrctrl_sleep(device);
+	}
+
+	KGSL_DRV_ERR(device, "Dump Finished\n");
+
+	return 0;
 }

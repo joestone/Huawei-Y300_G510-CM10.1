@@ -34,7 +34,7 @@ debug.enabletr=true
 persist.sys.use_dithering=0
 ro.max.fling_velocity=4000
 ro.opengles.version=131072
-debug.gr.numframebuffers=3 
+#debug.gr.numframebuffers=3 
 
 #pie-control
 qemu.hw.mainkeys=0
@@ -52,7 +52,7 @@ media.stagefright.enable-http=true
 media.stagefright.enable-fma2dp=true
 media.stagefright.enable-aac=true
 media.stagefright.enable-qcp=true
-media.stagefright.enable-record=false
+media.stagefright.enable-record=true
 
 ##############################       DUALMIC
 ro.config.dualmic=true
