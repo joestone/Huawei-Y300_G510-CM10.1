@@ -69,8 +69,8 @@ using android::Condition;
 #define MBADRC_DISABLE 0xFFEF
 #define SRS_ENABLE 0x0020
 #define SRS_DISABLE 0xFFDF
-#define LPA_BUFFER_SIZE 512*1024
-#define BUFFER_COUNT 2
+#define LPA_BUFFER_SIZE 256*1024
+#define BUFFER_COUNT 4
 
 #define AGC_ENABLE     0x0001
 #define NS_ENABLE      0x0002
@@ -207,7 +207,6 @@ public:
 
     virtual status_t    setParameters(const String8& keyValuePairs);
     virtual String8     getParameters(const String8& keys);
-
     // create I/O streams
     virtual AudioStreamOut* openOutputStream(
                                 uint32_t devices,
@@ -250,7 +249,7 @@ private:
     status_t    dumpInternals(int fd, const Vector<String16>& args);
     uint32_t    getInputSampleRate(uint32_t sampleRate);
     bool        checkOutputStandby();
-    status_t    doRouting(AudioStreamInMSM72xx *input, int outputDevice = 0);
+    status_t    doRouting(AudioStreamInMSM72xx *input);
 #ifdef QCOM_FM_ENABLED
     status_t    enableFM();
     status_t    disableFM();
@@ -300,6 +299,7 @@ private:
         virtual status_t    dump(int fd, const Vector<String16>& args);
                 bool        checkStandby();
         virtual status_t    setParameters(const String8& keyValuePairs);
+				
         virtual String8     getParameters(const String8& keys);
                 uint32_t    devices() { return mDevices; }
         virtual status_t    getRenderPosition(uint32_t *dspFrames);

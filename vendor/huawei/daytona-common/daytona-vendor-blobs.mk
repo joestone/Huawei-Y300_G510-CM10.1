@@ -40,6 +40,8 @@ PRODUCT_COPY_FILES += \
     vendor/huawei/daytona-common/proprietary/bin/thermald:system/bin/thermald \
     vendor/huawei/daytona-common/proprietary/bin/v4l2-qcamera-app:system/bin/v4l2-qcamera-app \
     vendor/huawei/daytona-common/proprietary/bin/write_NV_114:system/bin/write_NV_114 \
+    vendor/huawei/daytona-common/proprietary/bin/fm_qsoc_patches:system/bin/fm_qsoc_patches \
+    vendor/huawei/daytona-common/proprietary/bin/fmconfig:system/bin/fmconfig \
 	vendor/huawei/daytona-common/proprietary/etc/firmware/a225_pfp.fw:system/etc/firmware/a225_pfp.fw \
     vendor/huawei/daytona-common/proprietary/etc/firmware/a225_pm4.fw:system/etc/firmware/a225_pm4.fw \
     vendor/huawei/daytona-common/proprietary/etc/firmware/a225p5_pm4.fw:system/etc/firmware/a225p5_pm4.fw \

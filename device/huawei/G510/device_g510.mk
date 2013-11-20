@@ -99,7 +99,14 @@ PRODUCT_PACKAGES += \
    libnfc_ndev \
    Nfc	\
    Tag
-	
+
+# FM Radio
+PRODUCT_PACKAGES += \
+    FM2 \
+	FMRecord \
+    libqcomfm_jni \
+    qcom.fmradio
+   
 # Live Wallpapers
 PRODUCT_PACKAGES += \
         librs_jni \
@@ -172,7 +179,13 @@ PRODUCT_COPY_FILES += \
 
 PRODUCT_TAGS += dalvik.gc.type-precise
 PRODUCT_PROPERTY_OVERRIDES+= dalvik.vm.execution-mode=int:jit \
+dalvik.vm.dexopt-flags=v=a,o=v,m=y,u=y \
+dalvik.vm.checkjni=0 \
+dalvik.vm.debug.alloc=0 \
 
+
+
+$(call inherit-product, frameworks/native/build/phone-hdpi-512-dalvik-heap.mk)
 $(call inherit-product, build/target/product/full.mk)
 
 PRODUCT_NAME := cm_G510

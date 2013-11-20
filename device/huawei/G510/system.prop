@@ -16,25 +16,22 @@ ro.cwm.enable_key_repeat=true
 
 # Dalvik
 dalvik.vm.dexopt-data-only=1
-dalvik.vm.heapstartsize=5m
-dalvik.vm.heapsize=128m
-dalvik.vm.heapgrowthlimit=36m
 
 # Display
 ro.sf.lcd_density=240
-ro.lcd.backlight=67
+ro.lcd.backlight=80
 #debug.hwc.dynThreshold=1.91
 debug.sf.hw=1
-debug.composition.type=dyn
+#debug.composition.type=dyn
 #debug.sf.swaprect=1
-video.accelerate.hw=1
-debug.performance.tuning=1
+#video.accelerate.hw=1
+#debug.performance.tuning=1
 windowsmgr.max_events_per_sec=150
-debug.enabletr=true
-persist.sys.use_dithering=0
+#debug.enabletr=true
+persist.sys.use_dithering=2
 ro.max.fling_velocity=4000
 ro.opengles.version=131072
-#debug.gr.numframebuffers=3 
+debug.gr.numframebuffers=3 
 
 #pie-control
 qemu.hw.mainkeys=0
@@ -61,7 +58,7 @@ ro.config.dualmic=true
 # Memory
 ro.zram.default=0
 persist.sys.purgeable_assets=1
-#sys.mem.max_hidden_apps=10
+sys.mem.max_hidden_apps=10
 
 # Qualcomm
 com.qc.hardware=true
@@ -124,8 +121,6 @@ ro.emmc.sdcard.partition=19
 persist.fuse_sdcard=false
 ro.emmc=1
 ro.vold.umsdirtyratio=50
-##### set vold.externalsd.isprimary=true to use external SD as primary storage
-#vold.externalsd.isprimary=true
 
 # Wi-Fi
 wifi.interface=eth0
@@ -147,3 +142,8 @@ net.webkit.setpri = 1
 #LOC
 ro.com.google.locationfeatures=1
 ro.com.google.networklocation=1
+
+# FM Radio
+ro.fm.analogpath.supported=false
+ro.fm.transmitter=false
+ro.fm.mulinst.recording.support=false
